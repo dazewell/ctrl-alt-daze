@@ -254,7 +254,7 @@ function Format-BugHuntFinding($F) {
 function Format-BugHuntBody($R, [string[]]$Unanchored) {
   $n = @($R.findings).Count
   $lines = @("<!-- bug-hunt head=$($R.head) findings=$n -->",
-    "**Bug hunt** (run $($R.run) of $script:BugHuntBudget, $($R.level): $($R.model)/$($R.effort); $(($R.reasons) -join ', '))",
+    "**Bug hunt** (run $($R.run) of $script:BugHuntBudget, $($R.level): $($R.model)/$($R.effort); $(if (@($R.reasons).Count) { @($R.reasons) -join ', ' } else { 'no risk signals' }))",
     '', $(if ($n) { "$n finding(s), one thread each. Reply and resolve each: fixed in <sha>, or declined and why." } else { 'No findings.' }),
     '', "Coverage: $($R.coverage)")
   if ($Unanchored) { $lines += @('', 'Findings outside the PR diff are anchored on the file they name, or on the first changed file:') + ($Unanchored | ForEach-Object { "- $_" }) }

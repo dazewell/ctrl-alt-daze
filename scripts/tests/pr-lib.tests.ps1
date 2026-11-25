@@ -130,6 +130,8 @@ Check 'deleted file has no lines' $m.ContainsKey('/dev/null') $false
 $body = Format-BugHuntBody ([pscustomobject]@{ head = 'abc123'; run = 1; level = 'low'; model = 'sonnet'; effort = 'medium'; reasons = @('text(1)'); findings = @(); coverage = 'walked x' }) @()
 Check 'body starts with the marker' ($body -split "`n")[0] '<!-- bug-hunt head=abc123 findings=0 -->'
 Check 'body says no findings' ($body -match 'No findings') $true
+$body = Format-BugHuntBody ([pscustomobject]@{ head = 'abc'; run = 1; level = 'low'; model = 'sonnet'; effort = 'medium'; reasons = @(); findings = @(); coverage = 'c' }) @()
+Check 'empty reasons read as no risk signals' ($body -match 'medium; no risk signals\)') $true
 $f = Format-BugHuntFinding ([pscustomobject]@{ severity = 'important'; confidence = 'plausible'; title = 'T'; scenario = 'S'; evidence = @('a.cs:1'); fix = 'F' })
 Check 'finding text' ($f -match '^\*\*Bug hunt · important · plausible\*\* — T' -and $f -match '`a.cs:1`') $true
 $r = Get-BugHuntRisk @('+++ b/scripts/x.ps1', "+  process = 'Process\.Start|Kill'", '+++ b/src/A.cs', '+ Thread.Sleep(1);') @('scripts/x.ps1', 'src/A.cs')
