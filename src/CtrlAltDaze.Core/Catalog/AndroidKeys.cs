@@ -33,6 +33,13 @@ public static class AndroidKeys
 
     public static ValueList<string> Names { get; } = [.. Table.Select(k => k.Name)];
 
+    /// <summary>
+    /// A name adb can send: one from the table, or any other key code's name ("tv_input", "KEYCODE_BUTTON_A"): letters,
+    /// digits and underscores. The provider turns it into a key code the same way.
+    /// </summary>
+    public static bool IsName(string? name) =>
+        name is not null && name.Trim() is { Length: > 0 } t && t.All(c => char.IsAsciiLetterOrDigit(c) || c == '_');
+
     /// <summary>"home" → "KEYCODE_HOME"; null for a name not in the table.</summary>
     public static string? Code(string name) =>
         Table.FirstOrDefault(k => string.Equals(k.Name, name.Trim(), StringComparison.OrdinalIgnoreCase)).Code;

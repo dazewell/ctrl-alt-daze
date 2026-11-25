@@ -145,47 +145,75 @@ public sealed partial class LibraryView : UserControl
             CloseFlyouts(element);
     }
 
-    // ---- Android › Inputs (L1) ----
+    // ---- Android › Edit (D-156): address and adb path ----
 
-    private void OnRenameInputSave(object sender, RoutedEventArgs e) => RenameInput(sender as FrameworkElement);
+    private void OnEditAndroidSave(object sender, RoutedEventArgs e) => EditAndroid(sender as FrameworkElement);
 
-    private void OnRenameInputKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+    private void OnEditAndroidKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
     {
         if (e.Key != Windows.System.VirtualKey.Enter)
             return;
         e.Handled = true;
-        RenameInput(sender as FrameworkElement);
+        EditAndroid(sender as FrameworkElement);
     }
 
-    // Like Rename: the button and the box share a panel in the input's flyout; the input rides on their Tag.
-    private void RenameInput(FrameworkElement? element)
+    // The two boxes and the Save button share a panel in the flyout: address first, then adb.exe.
+    private void EditAndroid(FrameworkElement? element)
     {
-        if (element?.Tag is not AndroidInputViewModel input || BoxBeside(element) is not { } box || _viewModel is null)
+        if (element?.Tag is not LibraryItemViewModel item || element.Parent is not Panel panel || _viewModel is null)
             return;
-        var popups = VisualTreeHelperPopups(element).ToList(); // before the edit, which can rebuild the row
-        if (_viewModel.RenameInput(input, box.Text))
+        var boxes = panel.Children.OfType<TextBox>().ToList();
+        if (boxes.Count < 2)
+            return;
+        var popups = VisualTreeHelperPopups(element).ToList();
+        if (_viewModel.EditAndroid(item, boxes[0].Text, boxes[1].Text))
         {
             foreach (var popup in popups)
                 popup.IsOpen = false;
         }
     }
 
-    private void OnAddInputSave(object sender, RoutedEventArgs e) => AddInput(sender as FrameworkElement);
+    // ---- Android › Sequences (D-078, D-156) ----
 
-    private void OnAddInputKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+    private void OnRenameSequenceSave(object sender, RoutedEventArgs e) => RenameSequence(sender as FrameworkElement);
+
+    private void OnRenameSequenceKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
     {
         if (e.Key != Windows.System.VirtualKey.Enter)
             return;
         e.Handled = true;
-        AddInput(sender as FrameworkElement);
+        RenameSequence(sender as FrameworkElement);
     }
 
-    private void AddInput(FrameworkElement? element)
+    // Like Rename: the button and the box share a panel in the sequence's flyout; the sequence rides on their Tag.
+    private void RenameSequence(FrameworkElement? element)
+    {
+        if (element?.Tag is not AndroidSequenceViewModel input || BoxBeside(element) is not { } box || _viewModel is null)
+            return;
+        var popups = VisualTreeHelperPopups(element).ToList(); // before the edit, which can rebuild the row
+        if (_viewModel.RenameSequence(input, box.Text))
+        {
+            foreach (var popup in popups)
+                popup.IsOpen = false;
+        }
+    }
+
+    private void OnAddSequenceSave(object sender, RoutedEventArgs e) => AddSequence(sender as FrameworkElement);
+
+    private void OnAddSequenceKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+    {
+        if (e.Key != Windows.System.VirtualKey.Enter)
+            return;
+        e.Handled = true;
+        AddSequence(sender as FrameworkElement);
+    }
+
+    private void AddSequence(FrameworkElement? element)
     {
         if (element?.Tag is not LibraryItemViewModel item || BoxBeside(element) is not { } box || _viewModel is null)
             return;
         var popups = VisualTreeHelperPopups(element).ToList(); // before the edit, which can rebuild the row
-        if (_viewModel.AddInput(item, box.Text))
+        if (_viewModel.AddSequence(item, box.Text))
         {
             foreach (var popup in popups)
                 popup.IsOpen = false;
@@ -195,28 +223,60 @@ public sealed partial class LibraryView : UserControl
     private static TextBox? BoxBeside(FrameworkElement element) =>
         (element.Parent as Panel)?.Children.OfType<TextBox>().FirstOrDefault();
 
-    private void OnRemoveInput(object sender, RoutedEventArgs e)
+    private void OnRemoveSequence(object sender, RoutedEventArgs e)
     {
-        if ((sender as FrameworkElement)?.Tag is AndroidInputViewModel input)
-            _viewModel?.RemoveInputCommand.Execute(input);
+        if ((sender as FrameworkElement)?.Tag is AndroidSequenceViewModel input)
+            _viewModel?.RemoveSequenceCommand.Execute(input);
     }
 
-    private void OnAddUp(object sender, RoutedEventArgs e)
+    private void OnAddKey(object sender, RoutedEventArgs e) => AddKey(sender as FrameworkElement);
+
+    private void OnAddKeyKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
     {
-        if ((sender as FrameworkElement)?.Tag is AndroidInputViewModel input)
-            _viewModel?.AddUpCommand.Execute(input);
+        if (e.Key != Windows.System.VirtualKey.Enter)
+            return;
+        e.Handled = true;
+        AddKey(sender as FrameworkElement);
     }
 
-    private void OnAddDown(object sender, RoutedEventArgs e)
+    // The key box and the Add button share a panel; the sequence rides on their Tag. The box empties after a key goes in.
+    private void AddKey(FrameworkElement? element)
     {
-        if ((sender as FrameworkElement)?.Tag is AndroidInputViewModel input)
-            _viewModel?.AddDownCommand.Execute(input);
+        if (element?.Tag is not AndroidSequenceViewModel sequence || _viewModel is null
+            || (element.Parent as Panel)?.Children.OfType<ComboBox>().FirstOrDefault() is not { } box)
+            return;
+        var text = box.SelectedItem as string is { } picked && box.Text.Length == 0 ? picked : box.Text;
+        if (_viewModel.AddKey(sequence, text))
+        {
+            box.SelectedItem = null;
+            box.Text = "";
+        }
     }
 
-    private void OnRemoveMove(object sender, RoutedEventArgs e)
+    private void OnRemoveKey(object sender, RoutedEventArgs e)
     {
-        if ((sender as FrameworkElement)?.Tag is MoveToken move)
-            _viewModel?.RemoveMoveCommand.Execute(move);
+        if ((sender as FrameworkElement)?.Tag is KeyToken key)
+            _viewModel?.RemoveKeyCommand.Execute(key);
+    }
+
+    // Alt+Up / Alt+Down on a key's ×: it trades places with its neighbour (like Send keys in the inspector).
+    private void OnKeyMoveKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is not KeyToken key || _viewModel is null
+            || (Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Menu)
+                & Windows.UI.Core.CoreVirtualKeyStates.Down) == 0)
+            return;
+        var by = e.Key switch
+        {
+            Windows.System.VirtualKey.Up or Windows.System.VirtualKey.Left => -1,
+            Windows.System.VirtualKey.Down or Windows.System.VirtualKey.Right => 1,
+            _ => 0,
+        };
+        if (by != 0)
+        {
+            e.Handled = true;
+            _viewModel.MoveKey(key, by);
+        }
     }
 
     private static void CloseFlyouts(object sender)

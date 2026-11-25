@@ -259,7 +259,7 @@ public sealed partial class InspectorPane : UserControl
     private void OnHintLinkClick(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.Tag is ParamFieldViewModel field)
-            _viewModel?.OpenAndroidInputs(field);
+            _viewModel?.OpenAndroidSequences(field);
     }
 
     private void OnUseScreensOnNow(object sender, RoutedEventArgs e)

@@ -790,14 +790,14 @@ public sealed class InspectorViewModelTests : IDisposable
     {
         AddAndroidInputStep(device);
         string? requested = null;
-        _inspector.AndroidInputsRequested += key => requested = key;
+        _inspector.AndroidSequencesRequested += key => requested = key;
 
         var field = Field("input");
         Assert.True(field.HasHintLink);
         Assert.False(field.HasSuggestionHint); // the link replaces the plain text
-        Assert.Equal(InspectorViewModel.AddInputsHint, field.SuggestionHint);
+        Assert.Equal(InspectorViewModel.AddSequencesHint, field.SuggestionHint);
 
-        _inspector.OpenAndroidInputs(field);
+        _inspector.OpenAndroidSequences(field);
 
         Assert.Equal("tv", requested);
     }

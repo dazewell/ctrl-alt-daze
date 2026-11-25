@@ -181,13 +181,33 @@
                                                     <TextBlock Text="Devices" />
                                                 </StackPanel>
                                             </ToggleButton>
-                                            <ToggleButton IsChecked="{x:Bind ShowInputs, Mode=TwoWay}" Visibility="{x:Bind HasInputs}"
-                                                          ToolTipService.ToolTip="Inputs" AutomationProperties.Name="{x:Bind InputsName, Mode=OneWay}">
+                                            <ToggleButton IsChecked="{x:Bind ShowSequences, Mode=TwoWay}" Visibility="{x:Bind HasSequences}"
+                                                          ToolTipService.ToolTip="Key sequences" AutomationProperties.Name="{x:Bind SequencesName, Mode=OneWay}">
                                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                                     <FontIcon Glyph="&#xE8FD;" FontSize="14" />
-                                                    <TextBlock Text="Inputs" />
+                                                    <TextBlock Text="Sequences" />
                                                 </StackPanel>
                                             </ToggleButton>
+                                            <!-- Android › Edit (D-156): address and adb path; flows name the device by key, so they keep working. -->
+                                            <Button Visibility="{x:Bind HasSequences}" IsEnabled="{x:Bind CanEditAddress, Mode=OneWay}" ToolTipService.ToolTip="Edit address"
+                                                    AutomationProperties.Name="{x:Bind EditName, Mode=OneWay}" Style="{StaticResource IconButton}">
+                                                <FontIcon Glyph="&#xE70F;" FontSize="14" />
+                                                <Button.Flyout>
+                                                    <Flyout Placement="Bottom">
+                                                        <StackPanel Spacing="8" MinWidth="300">
+                                                            <TextBlock Text="Flows that use it keep working." Style="{StaticResource SettingsCardDescription}" />
+                                                            <TextBox Text="{x:Bind AddressText, Mode=OneWay}" Header="Address" PlaceholderText="192.168.1.50 or 192.168.1.50:5555"
+                                                                     KeyDown="OnEditAndroidKeyDown" Tag="{x:Bind}" />
+                                                            <TextBox Text="{x:Bind AdbText, Mode=OneWay}" Header="adb.exe (optional)" PlaceholderText="Empty: adb on PATH"
+                                                                     KeyDown="OnEditAndroidKeyDown" Tag="{x:Bind}" />
+                                                            <TextBlock Text="{x:Bind AddressError, Mode=OneWay}" Visibility="{x:Bind HasAddressError, Mode=OneWay}"
+                                                                       Foreground="{ThemeResource SystemFillColorCriticalBrush}" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap" />
+                                                            <Button Content="Save" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right"
+                                                                    Click="OnEditAndroidSave" Tag="{x:Bind}" />
+                                                        </StackPanel>
+                                                    </Flyout>
+                                                </Button.Flyout>
+                                            </Button>
                                             <Button Visibility="{x:Bind CanRename, Mode=OneWay}" ToolTipService.ToolTip="Rename"
                                                     AutomationProperties.Name="{x:Bind RenameName, Mode=OneWay}" Style="{StaticResource IconButton}">
                                                 <FontIcon Glyph="&#xE8AC;" FontSize="14" />
@@ -259,19 +279,19 @@
                                                       SelectedItem="{x:Bind BoundAudio, Mode=TwoWay}" IsEnabled="{x:Bind CanEditSides, Mode=OneWay}" />
                                         </StackPanel>
                                     </Border>
-                                    <!-- Android › Inputs (L1): each input's D-pad moves in order; rename (steps follow), remove (off while used). -->
-                                    <Border Visibility="{x:Bind ShowInputs, Mode=OneWay}" Padding="58,8,16,12" Margin="0,1,0,0" CornerRadius="0,0,4,4"
+                                    <!-- Android › Sequences (D-078, D-156): each sequence's keys in order; rename (steps follow), remove (off while used). -->
+                                    <Border Visibility="{x:Bind ShowSequences, Mode=OneWay}" Padding="58,8,16,12" Margin="0,1,0,0" CornerRadius="0,0,4,4"
                                             Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
-                                        <StackPanel Spacing="8" AutomationProperties.Name="{x:Bind InputsName, Mode=OneWay}">
-                                            <TextBlock Text="Each input is the moves from where the TV's input list opens to it, in order."
+                                        <StackPanel Spacing="8" AutomationProperties.Name="{x:Bind SequencesName, Mode=OneWay}">
+                                            <TextBlock Text="A sequence is keys sent in order, like a remote. A Play sequence step sends them."
                                                        Style="{StaticResource SettingsCardDescription}" TextWrapping="Wrap" />
-                                            <TextBlock Text="No inputs yet." Visibility="{x:Bind HasNoInputs, Mode=OneWay}" Style="{StaticResource SettingsCardDescription}" />
-                                            <ItemsRepeater ItemsSource="{x:Bind Inputs}">
+                                            <TextBlock Text="No sequences yet." Visibility="{x:Bind HasNoSequences, Mode=OneWay}" Style="{StaticResource SettingsCardDescription}" />
+                                            <ItemsRepeater ItemsSource="{x:Bind Sequences}">
                                                 <ItemsRepeater.Layout>
                                                     <StackLayout Spacing="12" />
                                                 </ItemsRepeater.Layout>
                                                 <ItemsRepeater.ItemTemplate>
-                                                    <DataTemplate x:DataType="vml:AndroidInputViewModel">
+                                                    <DataTemplate x:DataType="vml:AndroidSequenceViewModel">
                                                         <Grid ColumnSpacing="8" RowSpacing="6" AutomationProperties.Name="{x:Bind AutomationName, Mode=OneWay}">
                                                             <Grid.ColumnDefinitions>
                                                                 <ColumnDefinition Width="*" />
@@ -279,6 +299,7 @@
                                                                 <ColumnDefinition Width="Auto" />
                                                             </Grid.ColumnDefinitions>
                                                             <Grid.RowDefinitions>
+                                                                <RowDefinition Height="Auto" />
                                                                 <RowDefinition Height="Auto" />
                                                                 <RowDefinition Height="Auto" />
                                                                 <RowDefinition Height="Auto" />
@@ -293,45 +314,43 @@
                                                                 <Button.Flyout>
                                                                     <Flyout Placement="Bottom">
                                                                         <StackPanel Spacing="8" MinWidth="260">
-                                                                            <TextBlock Text="Steps that pick it keep working." Style="{StaticResource SettingsCardDescription}" />
-                                                                            <TextBox Text="{x:Bind Name}" Header="Name" KeyDown="OnRenameInputKeyDown" Tag="{x:Bind}" />
+                                                                            <TextBlock Text="Steps that play it keep working." Style="{StaticResource SettingsCardDescription}" />
+                                                                            <TextBox Text="{x:Bind Name}" Header="Name" KeyDown="OnRenameSequenceKeyDown" Tag="{x:Bind}" />
                                                                             <TextBlock Text="{x:Bind RenameError, Mode=OneWay}" Visibility="{x:Bind HasRenameError, Mode=OneWay}"
                                                                                        Foreground="{ThemeResource SystemFillColorCriticalBrush}" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap" />
                                                                             <Button Content="Rename" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right"
-                                                                                    Click="OnRenameInputSave" Tag="{x:Bind}" />
+                                                                                    Click="OnRenameSequenceSave" Tag="{x:Bind}" />
                                                                         </StackPanel>
                                                                     </Flyout>
                                                                 </Button.Flyout>
                                                             </Button>
                                                             <!-- The tooltip sits on a wrapper because a disabled button shows none. -->
                                                             <Border Grid.Column="2" Background="Transparent" VerticalAlignment="Center" ToolTipService.ToolTip="{x:Bind RemoveTip, Mode=OneWay}">
-                                                                <Button Click="OnRemoveInput" Tag="{x:Bind}" IsEnabled="{x:Bind CanRemove, Mode=OneWay}"
+                                                                <Button Click="OnRemoveSequence" Tag="{x:Bind}" IsEnabled="{x:Bind CanRemove, Mode=OneWay}"
                                                                         AutomationProperties.Name="{x:Bind RemoveName}" AutomationProperties.HelpText="{x:Bind RemoveTip, Mode=OneWay}" Style="{StaticResource IconButton}">
                                                                     <FontIcon Glyph="&#xE74D;" FontSize="14" />
                                                                 </Button>
                                                             </Border>
-                                                            <!-- The moves in send order; × takes one out. Wraps in a narrow window. -->
-                                                            <TextBlock Grid.Row="1" Grid.ColumnSpan="3" Text="{x:Bind MovesText, Mode=OneWay}"
-                                                                       Style="{StaticResource SettingsCardDescription}" Visibility="{x:Bind HasNoMoves, Mode=OneWay}" />
-                                                            <ItemsRepeater Grid.Row="1" Grid.ColumnSpan="3" ItemsSource="{x:Bind Moves, Mode=OneWay}"
-                                                                           AutomationProperties.Name="{x:Bind MovesName}">
+                                                            <!-- The keys in send order; × takes one out, Alt+Up / Alt+Down on it moves it. Wraps in a narrow window. -->
+                                                            <TextBlock Grid.Row="1" Grid.ColumnSpan="3" Text="{x:Bind KeysText, Mode=OneWay}"
+                                                                       Style="{StaticResource SettingsCardDescription}" Visibility="{x:Bind HasNoKeys, Mode=OneWay}" />
+                                                            <ItemsRepeater Grid.Row="1" Grid.ColumnSpan="3" ItemsSource="{x:Bind Keys, Mode=OneWay}"
+                                                                           AutomationProperties.Name="{x:Bind KeysName}">
                                                                 <ItemsRepeater.Layout>
-                                                                    <UniformGridLayout MinItemWidth="104" MinColumnSpacing="4" MinRowSpacing="4" ItemsStretch="Fill" />
+                                                                    <UniformGridLayout MinItemWidth="140" MinColumnSpacing="4" MinRowSpacing="4" ItemsStretch="Fill" />
                                                                 </ItemsRepeater.Layout>
                                                                 <ItemsRepeater.ItemTemplate>
-                                                                    <DataTemplate x:DataType="vml:MoveToken">
+                                                                    <DataTemplate x:DataType="vml:KeyToken">
                                                                         <Grid ColumnSpacing="6" Padding="8,2,2,2" CornerRadius="{StaticResource ControlCornerRadius}"
                                                                               Background="{ThemeResource ControlFillColorSecondaryBrush}" AutomationProperties.Name="{x:Bind Text}">
                                                                             <Grid.ColumnDefinitions>
-                                                                                <ColumnDefinition Width="Auto" />
                                                                                 <ColumnDefinition Width="*" />
                                                                                 <ColumnDefinition Width="Auto" />
                                                                             </Grid.ColumnDefinitions>
-                                                                            <FontIcon Glyph="{x:Bind Glyph}" FontSize="12" VerticalAlignment="Center" />
-                                                                            <TextBlock Grid.Column="1" Text="{x:Bind Text}" VerticalAlignment="Center" />
-                                                                            <Button Grid.Column="2" Tag="{x:Bind}" Click="OnRemoveMove"
-                                                                                    AutomationProperties.Name="{x:Bind RemoveName}" ToolTipService.ToolTip="Remove this move"
-                                                                                    IsEnabled="{x:Bind Input.CanEdit, Mode=OneWay}" Style="{StaticResource SubtleIconButton}">
+                                                                            <TextBlock Text="{x:Bind Text}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                                            <Button Grid.Column="1" Tag="{x:Bind}" Click="OnRemoveKey" KeyDown="OnKeyMoveKeyDown"
+                                                                                    AutomationProperties.Name="{x:Bind RemoveName}" ToolTipService.ToolTip="Remove this key. Alt+Up or Alt+Down moves it."
+                                                                                    IsEnabled="{x:Bind Sequence.CanEdit, Mode=OneWay}" Style="{StaticResource SubtleIconButton}">
                                                                                 <FontIcon Glyph="&#xE711;" FontSize="14" />
                                                                             </Button>
                                                                         </Grid>
@@ -339,39 +358,37 @@
                                                                 </ItemsRepeater.ItemTemplate>
                                                             </ItemsRepeater>
                                                             <StackPanel Grid.Row="2" Grid.ColumnSpan="3" Orientation="Horizontal" Spacing="4">
-                                                                <Button Click="OnAddUp" Tag="{x:Bind}" IsEnabled="{x:Bind CanEdit, Mode=OneWay}"
-                                                                        AutomationProperties.Name="{x:Bind AddUpName}" ToolTipService.ToolTip="Add a move up">
+                                                                <ComboBox IsEditable="True" ItemsSource="{x:Bind vml:AndroidSequenceViewModel.KeyChoices}" PlaceholderText="Key, like dpad_down"
+                                                                          MinWidth="200" IsEnabled="{x:Bind CanEdit, Mode=OneWay}" PreviewKeyDown="OnAddKeyKeyDown" Tag="{x:Bind}"
+                                                                          AutomationProperties.Name="{x:Bind AddKeyName}" />
+                                                                <Button Click="OnAddKey" Tag="{x:Bind}" IsEnabled="{x:Bind CanEdit, Mode=OneWay}"
+                                                                        AutomationProperties.Name="{x:Bind AddKeyName}" ToolTipService.ToolTip="Add this key at the end">
                                                                     <StackPanel Orientation="Horizontal" Spacing="6">
-                                                                        <FontIcon Glyph="&#xE70E;" FontSize="12" />
-                                                                        <TextBlock Text="Add Up" />
-                                                                    </StackPanel>
-                                                                </Button>
-                                                                <Button Click="OnAddDown" Tag="{x:Bind}" IsEnabled="{x:Bind CanEdit, Mode=OneWay}"
-                                                                        AutomationProperties.Name="{x:Bind AddDownName}" ToolTipService.ToolTip="Add a move down">
-                                                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                                                        <FontIcon Glyph="&#xE70D;" FontSize="12" />
-                                                                        <TextBlock Text="Add Down" />
+                                                                        <FontIcon Glyph="&#xE710;" FontSize="12" />
+                                                                        <TextBlock Text="Add key" />
                                                                     </StackPanel>
                                                                 </Button>
                                                             </StackPanel>
+                                                            <TextBlock Grid.Row="3" Grid.ColumnSpan="3" Text="{x:Bind AddKeyError, Mode=OneWay}" Visibility="{x:Bind HasAddKeyError, Mode=OneWay}"
+                                                                       Foreground="{ThemeResource SystemFillColorCriticalBrush}" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap" />
                                                         </Grid>
                                                     </DataTemplate>
                                                 </ItemsRepeater.ItemTemplate>
                                             </ItemsRepeater>
-                                            <Button IsEnabled="{x:Bind CanEditInputs, Mode=OneWay}" AutomationProperties.Name="Add input">
+                                            <Button IsEnabled="{x:Bind CanEditSequences, Mode=OneWay}" AutomationProperties.Name="Add sequence">
                                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                                     <FontIcon Glyph="&#xE710;" FontSize="14" />
-                                                    <TextBlock Text="Add input" />
+                                                    <TextBlock Text="Add sequence" />
                                                 </StackPanel>
                                                 <Button.Flyout>
                                                     <Flyout Placement="Bottom">
                                                         <StackPanel Spacing="8" MinWidth="260">
-                                                            <TextBox Text="{x:Bind NewInputName, Mode=OneWay}" Header="Name" PlaceholderText="hdmi2"
-                                                                     KeyDown="OnAddInputKeyDown" Tag="{x:Bind}" />
-                                                            <TextBlock Text="{x:Bind AddInputError, Mode=OneWay}" Visibility="{x:Bind HasAddInputError, Mode=OneWay}"
+                                                            <TextBox Text="{x:Bind NewSequenceName, Mode=OneWay}" Header="Name" PlaceholderText="hdmi2"
+                                                                     KeyDown="OnAddSequenceKeyDown" Tag="{x:Bind}" />
+                                                            <TextBlock Text="{x:Bind AddSequenceError, Mode=OneWay}" Visibility="{x:Bind HasAddSequenceError, Mode=OneWay}"
                                                                        Foreground="{ThemeResource SystemFillColorCriticalBrush}" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap" />
                                                             <Button Content="Add" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right"
-                                                                    Click="OnAddInputSave" Tag="{x:Bind}" />
+                                                                    Click="OnAddSequenceSave" Tag="{x:Bind}" />
                                                         </StackPanel>
                                                     </Flyout>
                                                 </Button.Flyout>

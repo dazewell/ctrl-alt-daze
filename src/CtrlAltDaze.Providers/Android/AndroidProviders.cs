@@ -9,7 +9,7 @@ namespace CtrlAltDaze.Providers.Android;
 /// <summary>What one adb.exe call printed.</summary>
 public sealed record AdbResult(int ExitCode, string Output, string LastError);
 
-/// <summary>adb.exe behind a seam, so the steps are tested without a TV (D-032).</summary>
+/// <summary>adb.exe behind a seam, so the steps are tested without a device (D-032).</summary>
 public interface IAdb
 {
     Task<AdbResult> RunAsync(string adb, IReadOnlyList<string> args, CancellationToken cancellationToken);
@@ -38,7 +38,7 @@ public sealed class AdbProcess : IAdb
 }
 
 /// <summary>
-/// One Android device over adb, ported from scd's AndroidModule: connect (with retries, since a sleeping TV answers late),
+/// One Android device over adb, ported from scd's AndroidModule: connect (with retries, since a sleeping device answers late),
 /// then one chained <c>adb shell</c> call per step, so key presses don't pay a round trip each.
 /// </summary>
 public sealed class AndroidRemote(IAdb adb, TimeProvider time)
@@ -279,7 +279,7 @@ internal static class AndroidSteps
     }
 }
 
-/// <summary><c>android.input</c>: wake, open the input list, move to the saved input, choose it (scd's sequence).</summary>
+/// <summary><c>android.input</c> ("Play sequence", D-156): the keys of a sequence saved with the device, in order, in one adb call.</summary>
 public sealed class AndroidInputProvider(AndroidRemote remote) : IStepProvider
 {
     public string Id => "android.input";
@@ -287,22 +287,18 @@ public sealed class AndroidInputProvider(AndroidRemote remote) : IStepProvider
     public Task ExecuteAsync(StepContext context, CancellationToken cancellationToken)
     {
         var device = context.Device();
-        var input = context.RequiredText("input");
-        if (!device.Inputs.TryGetValue(input, out var moves))
+        var name = context.RequiredText("input");
+        if (!device.Sequences.TryGetValue(name, out var keys))
         {
-            var known = device.Inputs.Count == 0 ? "none saved yet" : string.Join(", ", device.Inputs.Keys);
-            throw new StepFailedException($"The Android device \"{device.Key}\" has no input called \"{input}\" ({known}).");
+            var known = device.Sequences.Count == 0 ? "none saved yet" : string.Join(", ", device.Sequences.Keys);
+            throw new StepFailedException($"The Android device \"{device.Key}\" has no sequence called \"{name}\" ({known}).");
         }
-        return remote.ShellAsync(device, Commands(moves), cancellationToken);
+        if (keys.Count == 0)
+            throw new StepFailedException($"The sequence \"{name}\" of \"{device.Key}\" has no keys yet. Add them in the Library.");
+        return remote.ShellAsync(device, Commands(keys), cancellationToken);
     }
 
-    public static IReadOnlyList<string> Commands(IEnumerable<string> moves) =>
-    [
-        AndroidRemote.KeyEvent("wakeup"),
-        AndroidRemote.KeyEvent("tv_input"),
-        .. moves.Select(m => AndroidRemote.KeyEvent(m == "up" ? "dpad_up" : "dpad_down")),
-        AndroidRemote.KeyEvent("dpad_center"),
-    ];
+    public static IReadOnlyList<string> Commands(IEnumerable<string> keys) => [.. keys.Select(AndroidRemote.KeyEvent)];
 }
 
 /// <summary><c>android.keys</c>: the keys in order, in one adb call.</summary>
@@ -320,7 +316,7 @@ public sealed class AndroidKeysProvider(AndroidRemote remote) : IStepProvider
     }
 }
 
-/// <summary><c>android.sleep</c>: the TV (and, over HDMI-CEC, usually the screen) goes to sleep.</summary>
+/// <summary><c>android.sleep</c>: the device (and, over HDMI-CEC, usually the screen it drives) goes to sleep.</summary>
 public sealed class AndroidSleepProvider(AndroidRemote remote) : IStepProvider
 {
     public string Id => "android.sleep";

@@ -102,7 +102,7 @@
                                            Style="{StaticResource SettingsCardDescription}" Margin="0,4,0,0" />
                                 <TextBlock Text="{x:Bind SuggestionHint, Mode=OneWay}" Visibility="{x:Bind HasSuggestionHint, Mode=OneWay}"
                                            Style="{StaticResource SettingsCardDescription}" Margin="0,4,0,0" />
-                                <!-- Android input with no inputs yet: the link opens the device's inputs in the Library (L1). -->
+                                <!-- Play sequence with no sequences yet: the link opens the device's sequences in the Library (L1). -->
                                 <HyperlinkButton Content="{x:Bind SuggestionHint, Mode=OneWay}" Visibility="{x:Bind HasHintLink, Mode=OneWay}"
                                                  Click="OnHintLinkClick" Tag="{x:Bind}" />
                                 <!-- Screens: a checklist of what's plugged in (D-051). -->

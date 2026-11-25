@@ -543,89 +543,135 @@ public sealed class LibraryPageViewModelTests : IDisposable
         Assert.Equal("Connected", Item(LibraryKind.Bluetooth, "technics").State);
     }
 
-    // ---- Android › Inputs (L1) ----
+    // ---- Android › Sequences (D-078, D-156) ----
 
     [Fact]
-    public void AndroidInputsAreAddedMovedAndRenamedWithTheirSteps()
+    public void AndroidSequencesAreAddedFilledAndRenamedWithTheirSteps()
     {
         var tv = Item(LibraryKind.Android, "living-room");
-        Assert.True(tv.HasInputs);
-        Assert.True(tv.HasNoInputs);
-        Assert.Equal("192.168.1.50 · No inputs yet", tv.Detail);
-        Assert.Equal("input", tv.NewInputName);
+        Assert.True(tv.HasSequences);
+        Assert.True(tv.HasNoSequences);
+        Assert.Equal("192.168.1.50 · No sequences yet", tv.Detail);
+        Assert.Equal("sequence", tv.NewSequenceName);
 
-        Assert.True(_page.AddInput(tv, "hdmi2"));
+        Assert.True(_page.AddSequence(tv, "hdmi2"));
 
         tv = Item(LibraryKind.Android, "living-room");
-        var hdmi2 = Assert.Single(tv.Inputs);
-        Assert.Equal("192.168.1.50 · 1 input", tv.Detail);
-        Assert.Equal("Used by 1 flow", hdmi2.UsedByText); // flow b already picked hdmi2
+        var hdmi2 = Assert.Single(tv.Sequences);
+        Assert.Equal("192.168.1.50 · 1 sequence", tv.Detail);
+        Assert.Equal("Used by 1 flow", hdmi2.UsedByText); // flow b already played hdmi2
         Assert.False(hdmi2.CanRemove);
-        Assert.Equal("First in the list: no moves", hdmi2.MovesText);
+        Assert.Equal("No keys yet", hdmi2.KeysText);
 
-        _page.AddDownCommand.Execute(hdmi2);
-        _page.AddUpCommand.Execute(hdmi2);
-        _page.AddDownCommand.Execute(hdmi2);
-        Assert.Equal(["down", "up", "down"], hdmi2.Moves.Select(m => m.Move));
-        _page.RemoveMoveCommand.Execute(hdmi2.Moves[1]);
-        Assert.Equal("Down, Down", hdmi2.MovesText);
-        Assert.Equal(["down", "down"], _session.Current.Library.Android[0].Inputs["hdmi2"]);
+        Assert.True(_page.AddKey(hdmi2, "tv_input"));
+        Assert.True(_page.AddKey(hdmi2, "home"));
+        Assert.True(_page.AddKey(hdmi2, " DPAD_DOWN "));
+        Assert.Equal(["tv_input", "home", "dpad_down"], hdmi2.Keys.Select(k => k.Key));
+        _page.RemoveKeyCommand.Execute(hdmi2.Keys[1]);
+        Assert.Equal("tv_input, dpad_down", hdmi2.KeysText);
+        Assert.True(_page.MoveKey(hdmi2.Keys[1], -1));
+        Assert.False(_page.MoveKey(hdmi2.Keys[0], -1));
+        Assert.Equal(["dpad_down", "tv_input"], _session.Current.Library.Android[0].Sequences["hdmi2"]);
 
-        Assert.True(_page.RenameInput(hdmi2, "game"));
+        Assert.False(_page.AddKey(hdmi2, "left arrow"));
+        Assert.Equal("\"left arrow\" isn't an Android key name (like home, back, dpad_down).", hdmi2.AddKeyError);
+        Assert.False(_page.AddKey(hdmi2, " "));
+        Assert.Equal("Pick a key or type its name.", hdmi2.AddKeyError);
 
-        Assert.Equal("game", Assert.Single(Item(LibraryKind.Android, "living-room").Inputs).Name);
+        Assert.True(_page.RenameSequence(hdmi2, "game"));
+
+        Assert.Equal("game", Assert.Single(Item(LibraryKind.Android, "living-room").Sequences).Name);
         var step = (StepNode)_session.Current.Flows.Single(f => f.Id == "b").FindNode("tv")!;
         Assert.Equal("game", ((ScalarParam)step.With["input"]).Text);
     }
 
     [Fact]
-    public void AnAndroidInputNameMustBeNewOnItsDevice()
+    public void AnAndroidSequenceNameMustBeNewOnItsDevice()
     {
         var tv = Item(LibraryKind.Android, "living-room");
-        Assert.True(_page.AddInput(tv, "hdmi1"));
+        Assert.True(_page.AddSequence(tv, "hdmi1"));
         tv = Item(LibraryKind.Android, "living-room");
 
-        Assert.False(_page.AddInput(tv, " hdmi1 "));
-        Assert.Equal("living-room already has an input called \"hdmi1\".", tv.AddInputError);
-        Assert.False(_page.AddInput(tv, ""));
-        Assert.Equal("Give it a name.", tv.AddInputError);
-        Assert.True(_page.AddInput(tv, "hdmi3"));
-        Assert.Null(Item(LibraryKind.Android, "living-room").AddInputError);
+        Assert.False(_page.AddSequence(tv, " hdmi1 "));
+        Assert.Equal("living-room already has a sequence called \"hdmi1\".", tv.AddSequenceError);
+        Assert.False(_page.AddSequence(tv, ""));
+        Assert.Equal("Give it a name.", tv.AddSequenceError);
+        Assert.True(_page.AddSequence(tv, "hdmi3"));
+        Assert.Null(Item(LibraryKind.Android, "living-room").AddSequenceError);
 
-        var hdmi3 = Item(LibraryKind.Android, "living-room").Inputs[1];
-        Assert.False(_page.RenameInput(hdmi3, "hdmi1"));
-        Assert.Equal("living-room already has an input called \"hdmi1\".", hdmi3.RenameError);
+        var hdmi3 = Item(LibraryKind.Android, "living-room").Sequences[1];
+        Assert.False(_page.RenameSequence(hdmi3, "hdmi1"));
+        Assert.Equal("living-room already has a sequence called \"hdmi1\".", hdmi3.RenameError);
     }
 
     [Fact]
-    public void AnUnusedAndroidInputCanBeRemoved()
+    public void AnUnusedAndroidSequenceCanBeRemoved()
     {
-        _page.AddInput(Item(LibraryKind.Android, "living-room"), "hdmi1");
-        _page.AddInput(Item(LibraryKind.Android, "living-room"), "hdmi2");
-        var inputs = Item(LibraryKind.Android, "living-room").Inputs;
-        Assert.True(inputs[0].CanRemove);
-        Assert.Equal("Remove this input", inputs[0].RemoveTip);
-        Assert.Equal("Used by 1 flow. Change that step first.", inputs[1].RemoveTip);
+        _page.AddSequence(Item(LibraryKind.Android, "living-room"), "hdmi1");
+        _page.AddSequence(Item(LibraryKind.Android, "living-room"), "hdmi2");
+        var sequences = Item(LibraryKind.Android, "living-room").Sequences;
+        Assert.True(sequences[0].CanRemove);
+        Assert.Equal("Remove this sequence", sequences[0].RemoveTip);
+        Assert.Equal("Used by 1 flow. Change that step first.", sequences[1].RemoveTip);
 
-        _page.RemoveInputCommand.Execute(inputs[1]); // in use: nothing happens
-        _page.RemoveInputCommand.Execute(inputs[0]);
+        _page.RemoveSequenceCommand.Execute(sequences[1]); // in use: nothing happens
+        _page.RemoveSequenceCommand.Execute(sequences[0]);
 
-        Assert.Equal(["hdmi2"], _session.Current.Library.Android[0].Inputs.Keys);
+        Assert.Equal(["hdmi2"], _session.Current.Library.Android[0].Sequences.Keys);
     }
 
     [Fact]
-    public void TheInspectorLinkOpensTheDevicesInputs()
+    public void AnAndroidDevicesAddressAndAdbCanBeChanged()
+    {
+        var tv = Item(LibraryKind.Android, "living-room");
+        Assert.True(tv.CanEditAddress);
+        Assert.Equal("192.168.1.50", tv.AddressText);
+        Assert.Equal("", tv.AdbText);
+
+        Assert.False(_page.EditAndroid(tv, "not an address", ""));
+        Assert.Equal("\"not an address\" isn't a network address (like 192.168.1.50 or 192.168.1.50:5555).", tv.AddressError);
+        Assert.False(_page.EditAndroid(tv, "192.168.1.60", "C:\tools\a|db.exe"));
+        Assert.Equal("adb's path has characters a path can't have. Leave it empty when adb is on PATH.", tv.AddressError);
+        Assert.True(_page.EditAndroid(tv, "192.168.1.50", "adb")); // a saved path without .exe still allows editing the address
+
+        Assert.True(_page.EditAndroid(tv, " 192.168.1.60:5556 ", "\"C:\\tools\\adb.exe\""));
+
+        var device = Assert.Single(_session.Current.Library.Android);
+        Assert.Equal(("living-room", "192.168.1.60:5556", @"C:\tools\adb.exe"), (device.Key, device.Address, device.Adb));
+        tv = Item(LibraryKind.Android, "living-room");
+        Assert.Null(tv.AddressError);
+        Assert.Equal("192.168.1.60:5556", tv.AddressText);
+        Assert.True(_page.EditAndroid(tv, "192.168.1.60:5556", ""));
+        Assert.Null(_session.Current.Library.Android[0].Adb);
+    }
+
+    [Fact]
+    public void AnotherAndroidDevicesAddressIsRefused()
+    {
+        var section = _page.Section(LibraryKind.Android);
+        section.ManualValue = "192.168.1.70";
+        section.ManualName = "Den box";
+        Assert.True(_page.AddByHand(LibraryKind.Android));
+        var den = Item(LibraryKind.Android, "den-box");
+
+        Assert.False(_page.EditAndroid(den, "192.168.1.50:5555", ""));
+
+        Assert.Equal("living-room already has this address.", den.AddressError);
+    }
+
+    [Fact]
+    public void TheInspectorLinkOpensTheDevicesSequences()
     {
         _page.SelectedIndex = 0;
 
-        _page.RevealInputs("living-room");
+        _page.RevealSequences("living-room");
 
         Assert.Equal("Android", _page.Sections[_page.SelectedIndex].Title);
-        Assert.True(Item(LibraryKind.Android, "living-room").ShowInputs);
+        Assert.True(Item(LibraryKind.Android, "living-room").ShowSequences);
     }
 
     [Fact]
-    public void TheInspectorHintLinkShowsTheLibraryWithTheDevicesInputsOpen()
+    public void TheInspectorHintLinkShowsTheLibraryWithTheDevicesSequencesOpen()
     {
         using var shell = new ShellViewModel(_session, _engine, a => a(), _folder);
         var requested = 0;
@@ -633,32 +679,34 @@ public sealed class LibraryPageViewModelTests : IDisposable
         shell.OpenFlow("b");
         shell.Editor!.Select("tv");
         var field = shell.Inspector!.Fields.Single(f => f.Name == "input");
-        Assert.True(field.HasHintLink); // living-room has no inputs yet
+        Assert.True(field.HasHintLink); // living-room has no sequences yet
 
-        shell.Inspector.OpenAndroidInputs(field);
+        shell.Inspector.OpenAndroidSequences(field);
 
         Assert.Equal(1, requested);
         Assert.Equal("Android", shell.Library.Sections[shell.Library.SelectedIndex].Title);
-        Assert.True(shell.Library.Section(LibraryKind.Android).Items.Single(i => i.Key == "living-room").ShowInputs);
+        Assert.True(shell.Library.Section(LibraryKind.Android).Items.Single(i => i.Key == "living-room").ShowSequences);
     }
 
     [Fact]
-    public void InputEditsLeaveAnOpenFlowsDraftUnsaved()
+    public void SequenceEditsLeaveAnOpenFlowsDraftUnsaved()
     {
         _session.UpdateDraft("a", f => f with { Name = "Draft name" }); // D-047: not saved yet
         var tv = Item(LibraryKind.Android, "living-room");
 
-        Assert.True(_page.AddInput(tv, "hdmi2"));
-        var hdmi2 = Item(LibraryKind.Android, "living-room").Inputs[0];
-        _page.AddDownCommand.Execute(hdmi2);
-        Assert.True(_page.AddInput(Item(LibraryKind.Android, "living-room"), "spare"));
-        _page.RemoveInputCommand.Execute(Item(LibraryKind.Android, "living-room").Inputs[1]);
-        Assert.True(_page.RenameInput(Item(LibraryKind.Android, "living-room").Inputs[0], "game"));
+        Assert.True(_page.AddSequence(tv, "hdmi2"));
+        var hdmi2 = Item(LibraryKind.Android, "living-room").Sequences[0];
+        Assert.True(_page.AddKey(hdmi2, "dpad_down"));
+        Assert.True(_page.AddSequence(Item(LibraryKind.Android, "living-room"), "spare"));
+        _page.RemoveSequenceCommand.Execute(Item(LibraryKind.Android, "living-room").Sequences[1]);
+        Assert.True(_page.RenameSequence(Item(LibraryKind.Android, "living-room").Sequences[0], "game"));
+        Assert.True(_page.EditAndroid(Item(LibraryKind.Android, "living-room"), "192.168.1.51", ""));
 
         Assert.Equal("Connect Technics", _session.SavedFlow("a")!.Name); // the draft stayed a draft
         Assert.Equal("Draft name", _session.Current.Flows.Single(f => f.Id == "a").Name);
-        Assert.Equal(["game"], _session.Current.Library.Android[0].Inputs.Keys);
-        Assert.Equal(["down"], _session.Current.Library.Android[0].Inputs["game"]);
+        Assert.Equal(["game"], _session.Current.Library.Android[0].Sequences.Keys);
+        Assert.Equal(["dpad_down"], _session.Current.Library.Android[0].Sequences["game"]);
+        Assert.Equal("192.168.1.51", _session.Current.Library.Android[0].Address);
         Assert.Equal("game", ((ScalarParam)((StepNode)_session.SavedFlow("b")!.FindNode("tv")!).With["input"]).Text);
     }
 

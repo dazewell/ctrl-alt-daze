@@ -42,7 +42,7 @@ public enum SuggestSource
     /// <summary>The engine's live list: <c>devices &lt;kind&gt;</c> (displays, services, credentials, adb).</summary>
     Devices,
 
-    /// <summary>The open config: flag names, programs, the inputs of the Android device in param <c>device</c>.</summary>
+    /// <summary>The open config: flag names, programs, the sequences of the Android device in param <c>device</c>.</summary>
     Config,
 
     /// <summary>A fixed table in Core that the provider also uses (Android keys).</summary>
@@ -56,7 +56,7 @@ public sealed record ParamSuggest(SuggestSource Source, string Kind)
     public ValueList<string> Values { get; init; } = [];
 
     /// <summary>Config kinds (<see cref="SuggestSource.Config"/>).</summary>
-    public const string Flags = "flags", AndroidInputs = "androidInputs", Flows = "flows";
+    public const string Flags = "flags", AndroidSequences = "androidSequences", Flows = "flows";
 
     /// <summary>A <see cref="SuggestSource.Devices"/> kind that needs the step's Android device: the apps installed on it (D-092).</summary>
     public const string AndroidApps = "androidApps";

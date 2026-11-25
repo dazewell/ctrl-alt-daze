@@ -61,7 +61,7 @@ public static class ConfigMapper
             {
                 Address = d.Address,
                 Adb = d.Adb,
-                Inputs = d.Inputs.Count == 0 ? null : new ParamDocument(new MapParam(new(d.Inputs.Select(i =>
+                Sequences = d.Sequences.Count == 0 ? null : new ParamDocument(new MapParam(new(d.Sequences.Select(i =>
                     KeyValuePair.Create(i.Key, (ParamValue)new ListParam(new(i.Value.Select(m => (ParamValue)m)))))))),
             })),
             Bound = NullIfEmpty(config.Library.Bound.ToDictionary(d => d.Key, d => new BoundDocument
@@ -154,6 +154,23 @@ public static class ConfigMapper
         };
 
     private static Dictionary<string, T>? NullIfEmpty<T>(Dictionary<string, T> map) => map.Count == 0 ? null : map;
+
+    /// <summary>An Android device's named lists (sequences, old inputs): none when absent or blank, null for a wrong shape.</summary>
+    private static IEnumerable<KeyValuePair<string, ParamValue>>? Entries(ParamDocument? document) => document?.ToValue() switch
+    {
+        null => [],
+        MapParam map => map.Entries,
+        ScalarParam { Text: "" } => [],
+        _ => null,
+    };
+
+    /// <summary>A lone value is a one-item list; an item that isn't text is null.</summary>
+    private static List<string?> Texts(ParamValue value) => value switch
+    {
+        ScalarParam scalar => [scalar.Text],
+        ListParam list => [.. list.Items.Select(m => m is ScalarParam s ? s.Text : null)],
+        _ => [null],
+    };
 
     /// <summary>Enum values are written camelCase: "bottomCenter", "failure".</summary>
     internal static string EnumText<T>(T value) where T : struct, Enum
@@ -296,44 +313,61 @@ public static class ConfigMapper
                     Error(path + ".address", "Android device address missing (like 192.168.1.50).");
                     continue;
                 }
-                var inputs = new List<KeyValuePair<string, ValueList<string>>>();
+                var sequences = new List<KeyValuePair<string, ValueList<string>>>();
                 var ok = true;
-                IEnumerable<KeyValuePair<string, ParamValue>>? entries = item.Inputs?.ToValue() switch
+                if (Entries(item.Sequences) is not { } entries)
                 {
-                    null => [],
-                    MapParam map => map.Entries,
-                    ScalarParam { Text: "" } => [],
-                    _ => (IEnumerable<KeyValuePair<string, ParamValue>>?)null,
-                };
-                if (entries is null)
-                {
-                    Error(path + ".inputs", "Inputs are names with their moves, like  hdmi2: [down, down].");
+                    Error(path + ".sequences", "Sequences are names with their keys, like  hdmi2: [tv_input, dpad_down, dpad_center].");
                     continue;
                 }
-                foreach (var (input, value) in entries)
+                foreach (var (name, value) in entries)
                 {
-                    // A lone move is a one-move list; anything else that isn't up or down rejects the entry.
-                    var moves = value switch
-                    {
-                        ScalarParam scalar => [scalar.Text],
-                        ListParam list => list.Items.Select(m => m is ScalarParam s ? s.Text : null).ToList(),
-                        _ => new List<string?> { null },
-                    };
-                    var bad = moves.FindIndex(m => m is not ("up" or "down"));
+                    // A lone key is a one-key list; anything that isn't a key name rejects the entry.
+                    var keys = Texts(value);
+                    var bad = keys.FindIndex(k => !AndroidKeys.IsName(k));
                     if (bad >= 0)
                     {
-                        Error($"{path}.inputs.{input}", moves[bad] is { Length: > 0 } text
-                            ? $"\"{text}\" isn't a move: use up or down."
-                            : "Each move is up or down.");
+                        Error($"{path}.sequences.{name}", keys[bad] is { Length: > 0 } text
+                            ? $"\"{text}\" isn't an Android key name (like home, back, dpad_down)."
+                            : "Each key is a key name, like home or dpad_down.");
                         ok = false;
                     }
                     else
                     {
-                        inputs.Add(KeyValuePair.Create(input, new ValueList<string>(moves!)));
+                        sequences.Add(KeyValuePair.Create(name, new ValueList<string>(keys!)));
+                    }
+                }
+
+                // Before D-156 a device kept "inputs": D-pad moves after the TV's input key. They become sequences that
+                // send the same keys; the next save writes them as sequences.
+                if (Entries(item.Inputs) is not { } legacy)
+                {
+                    Error(path + ".inputs", "Inputs are names with their moves, like  hdmi2: [down, down].");
+                    continue;
+                }
+                foreach (var (name, value) in legacy)
+                {
+                    var moves = Texts(value);
+                    var bad = moves.FindIndex(m => m is not ("up" or "down"));
+                    if (bad >= 0)
+                    {
+                        Error($"{path}.inputs.{name}", moves[bad] is { Length: > 0 } text
+                            ? $"\"{text}\" isn't a move: use up or down."
+                            : "Each move is up or down.");
+                        ok = false;
+                    }
+                    else if (sequences.Any(e => e.Key == name))
+                    {
+                        Error($"{path}.inputs.{name}", $"\"{name}\" is also a sequence. Keep one of them.");
+                        ok = false;
+                    }
+                    else
+                    {
+                        sequences.Add(KeyValuePair.Create(name, AndroidSequenceEdits.FromMoves(moves!)));
                     }
                 }
                 if (ok)
-                    android.Add(new AndroidDevice(key, item.Address, new(inputs), string.IsNullOrWhiteSpace(item.Adb) ? null : item.Adb));
+                    android.Add(new AndroidDevice(key, item.Address, new(sequences), string.IsNullOrWhiteSpace(item.Adb) ? null : item.Adb));
             }
             var bound = new List<BoundDevice>();
             foreach (var (key, item) in document?.Bound ?? [])

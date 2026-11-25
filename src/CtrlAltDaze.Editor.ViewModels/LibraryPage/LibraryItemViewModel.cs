@@ -50,7 +50,7 @@ public sealed partial class LibraryItemViewModel : ObservableObject
         Key = key;
         Glyph = glyph;
         _test = test;
-        Inputs.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasNoInputs));
+        Sequences.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasNoSequences));
     }
 
     /// <summary>The key steps reference; a program's path.</summary>
@@ -59,7 +59,7 @@ public sealed partial class LibraryItemViewModel : ObservableObject
     public string Glyph { get; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(AutomationName), nameof(TestName), nameof(RemoveName), nameof(RenameName), nameof(SidesName), nameof(DetailsName), nameof(OpenLocationName), nameof(InputsName))]
+    [NotifyPropertyChangedFor(nameof(AutomationName), nameof(TestName), nameof(RemoveName), nameof(RenameName), nameof(SidesName), nameof(DetailsName), nameof(OpenLocationName), nameof(SequencesName), nameof(EditName))]
     public partial string Title { get; internal set; } = "";
 
     public string TestName => $"Test {Title}";
@@ -220,33 +220,53 @@ public sealed partial class LibraryItemViewModel : ObservableObject
     [ObservableProperty]
     public partial bool ShowDetails { get; set; }
 
-    /// <summary>Android devices: their inputs can be edited here (L1, D-078).</summary>
-    public bool HasInputs { get; internal init; }
+    /// <summary>Android devices: their sequences, address and adb path can be edited here (D-078, D-156).</summary>
+    public bool HasSequences { get; internal init; }
 
-    /// <summary>Android: the inputs, in the order the file keeps them.</summary>
-    public System.Collections.ObjectModel.ObservableCollection<AndroidInputViewModel> Inputs { get; } = [];
+    /// <summary>Android: the sequences, in the order the file keeps them.</summary>
+    public System.Collections.ObjectModel.ObservableCollection<AndroidSequenceViewModel> Sequences { get; } = [];
 
-    /// <summary>Android: the Inputs panel under the card is open.</summary>
+    /// <summary>Android: the Sequences panel under the card is open.</summary>
     [ObservableProperty]
-    public partial bool ShowInputs { get; set; }
+    public partial bool ShowSequences { get; set; }
 
-    public string InputsName => $"Inputs of {Title}";
+    public string SequencesName => $"Sequences of {Title}";
 
-    /// <summary>Android: why the last Add input didn't happen, or null.</summary>
+    public string EditName => $"Edit {Title}";
+
+    /// <summary>Android: what the Edit flyout starts with.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasAddInputError))]
-    public partial string? AddInputError { get; internal set; }
+    public partial string AddressText { get; internal set; } = "";
 
-    public bool HasAddInputError => AddInputError is not null;
-
-    /// <summary>Android: the name Add input offers ("input", "input-2"…).</summary>
+    /// <summary>Android: adb.exe's path, "" = on PATH.</summary>
     [ObservableProperty]
-    public partial string NewInputName { get; internal set; } = "";
+    public partial string AdbText { get; internal set; } = "";
 
     [ObservableProperty]
-    public partial bool CanEditInputs { get; internal set; }
+    public partial bool CanEditAddress { get; internal set; }
 
-    public bool HasNoInputs => Inputs.Count == 0;
+    /// <summary>Android: why the last Edit didn't happen, or null.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasAddressError))]
+    public partial string? AddressError { get; internal set; }
+
+    public bool HasAddressError => AddressError is not null;
+
+    /// <summary>Android: why the last Add sequence didn't happen, or null.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasAddSequenceError))]
+    public partial string? AddSequenceError { get; internal set; }
+
+    public bool HasAddSequenceError => AddSequenceError is not null;
+
+    /// <summary>Android: the name Add sequence offers ("sequence", "sequence-2"…).</summary>
+    [ObservableProperty]
+    public partial string NewSequenceName { get; internal set; } = "";
+
+    [ObservableProperty]
+    public partial bool CanEditSequences { get; internal set; }
+
+    public bool HasNoSequences => Sequences.Count == 0;
 
 
     public string AutomationName => $"{Title}, {Description}, {UsedByText}".Replace(", , ", ", ", StringComparison.Ordinal);
