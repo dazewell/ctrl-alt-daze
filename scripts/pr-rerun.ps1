@@ -27,5 +27,5 @@ if ($attempt -ge 2 -and -not $Force) { "run $run already rerun (attempt $attempt
 if ($DryRun) { "dry-run: would run gh run rerun $run --failed"; exit 0 }
 gh run rerun $run --failed 2>&1 | Out-Null
 if ($LASTEXITCODE -ne 0) { 'rerun failed to start'; exit 1 }
-"rerun started for run $run; pr-wait.ps1 $Pr -NoReview to wait"
+"rerun started for run $run; pr-wait.ps1 $Pr to wait"
 exit 0

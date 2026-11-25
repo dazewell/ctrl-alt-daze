@@ -2031,3 +2031,18 @@ Status: accepted
   It would install Ctrl Alt Daze into `DazeControlApp`, and T29.2 (e) would then uninstall the running app.
 - Why not keep "win" and rely on the user installing first: the old engine checks at +1 min and daily.
 - Revisit if: Velopack starts filtering by package id (then "win" could come back, but nothing needs it).
+
+## D-155 · 2026-11-25 · The Copilot review is replaced by a local bug hunt through `claude -p`, posted as PR threads
+Status: accepted (user, 2026-11-25: Copilot review no longer available; replicate DwellBoard PR 74's flow). Amends D-122.
+- Decision: `scripts/pr-bug-hunt.ps1 <pr>` runs the `bug-hunt` skill as the system prompt of a clean headless `claude -p`
+  (Read/Grep/Glob over the checkout only, no CLAUDE.md, settings or MCP, started outside the repo) on a packet of the PR's
+  code diff, then posts one review (marker `<!-- bug-hunt head=… -->`) with one thread per finding. Model and effort come
+  from what the changed lines touch (process, data, secrets 3; async, threads, idle, native, AOT, lifecycle, focus, IPC,
+  core files 2; text 1): low sonnet/medium, standard opus/medium, high opus/high, max opus/xhigh. Same rule as before:
+  required over 100 non-test code lines, 2 per PR, only once CI is green. Auth: the machine-wide DPAPI token from
+  `Set-BugHuntToken` (`~/.claude/bug-hunt-token.txt`, shared with DwellBoard), else the CLI login.
+- Why threads, unlike DwellBoard (handback only): `pr-status` already gates on unresolved threads, so a finding can't be
+  merged past unanswered, and `pr-threads`/`pr-reply` work unchanged.
+- Why not `/code-review` in the working session: it reads with the author's context; the point is a cold reader.
+- Why not keep `pr-request-review.ps1`: nothing could request Copilot any more; git history has it.
+- Revisit if: Copilot review comes back, or bug hunts keep missing bugs a later live check finds (tune the skill's lists).
