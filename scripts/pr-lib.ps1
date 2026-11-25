@@ -8,7 +8,6 @@ query($owner:String!,$name:String!,$n:Int!){repository(owner:$owner,name:$name){
  files(first:100){totalCount nodes{path additions}}
  reviewThreads(first:100){totalCount nodes{id isResolved isOutdated path line originalLine comments(first:20){totalCount nodes{author{login} body}}}}
  reviews(last:30){nodes{id state body submittedAt author{login} commit{oid}}}
- timelineItems(last:30,itemTypes:[REVIEW_REQUESTED_EVENT]){nodes{... on ReviewRequestedEvent{createdAt requestedReviewer{... on User{login} ... on Bot{login}}}}}
  commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100){totalCount nodes{__typename
    ... on CheckRun{name status conclusion} ... on StatusContext{context state}}}}}}}
 }}}
@@ -26,7 +25,7 @@ function Format-Text([string]$Text, [int]$Max = 300) {
 }
 
 function Test-CodePath([string]$Path) {
-  # "non-test code" for the Copilot-review rule: not docs, not tests (repo-workflow section 6)
+  # "non-test code" for the bug-hunt rule: not docs, not tests (repo-workflow section 6)
   -not ($Path -match '^docs/' -or $Path -match '\.md$' -or $Path -match '^tests/' -or $Path -match '\.tests\.ps1$')
 }
 
@@ -42,12 +41,8 @@ function ConvertTo-PrData($Raw) {
       } })
   $reviews = @($p.reviews.nodes | ForEach-Object {
       [pscustomobject]@{ Id = $_.id; Author = $_.author.login; State = $_.state; Body = $_.body; At = $_.submittedAt; Commit = $_.commit.oid } })
-  $copRev = @($reviews | Where-Object { $_.Author -like 'copilot*' })
-  $copReq = @($p.timelineItems.nodes | Where-Object { $_.requestedReviewer.login -like 'copilot*' } | ForEach-Object { $_.createdAt } | Sort-Object)
-  $lastReq = if ($copReq) { $copReq[-1] } else { $null }
-  $lastRev = if ($copRev) { ($copRev | Sort-Object At)[-1].At } else { $null }
-  # pending = asked after the last review landed (GitHub empties reviewRequests once Copilot starts, so the timeline is the truth)
-  $pending = [bool]($lastReq -and (-not $lastRev -or [datetime]$lastReq -gt [datetime]$lastRev))
+  # bug-hunt reviews carry a marker (pr-bug-hunt.ps1); the author is whoever ran it
+  $hunts = @($reviews | Where-Object { $_.Body -match '<!-- bug-hunt head=' } | Sort-Object At)
 
   $ctx = @($p.commits.nodes[0].commit.statusCheckRollup.contexts.nodes | Where-Object { $_ })
   $failed = @(); $running = 0
@@ -67,7 +62,7 @@ function ConvertTo-PrData($Raw) {
   [pscustomobject]@{
     Number = $p.number; Title = $p.title; State = $p.state; IsDraft = [bool]$p.isDraft; Head = $p.headRefOid
     MergeState = $p.mergeStateStatus; Mergeable = $p.mergeable
-    Threads = $threads; Reviews = $reviews; CopilotReviews = $copRev; CopilotPending = $pending
+    Threads = $threads; Reviews = $reviews; BugHunts = $hunts
     Ci = $ci; CiFailed = $failed; CiRunning = $running; CiTotal = $ctx.Count
     CodeAdds = $adds; CodeFiles = $codeFiles; FilesTruncated = ($p.files.totalCount -gt 100); ThreadsTruncated = ($p.reviewThreads.totalCount -gt 100); CiTruncated = $ciTruncated
   }
@@ -83,7 +78,7 @@ function Get-PrData([int]$Pr, [string]$Repo) {
 
 function Get-Unresolved($D) { @($D.Threads | Where-Object { -not $_.Resolved }) }
 
-function Test-CopilotRequired($D) { $D.CodeAdds -gt 100 }
+function Test-ReviewRequired($D) { $D.CodeAdds -gt 100 }
 
 # Returns @{ Ready; Blockers[]; Warnings[] }. $ConflictCheck: scriptblock returning 'conflict'|'clean'|'unknown' (git merge-tree), only called when GitHub reports a conflict.
 function Get-Verdict($D, [scriptblock]$ConflictCheck = { 'unknown' }) {
@@ -97,13 +92,12 @@ function Get-Verdict($D, [scriptblock]$ConflictCheck = { 'unknown' }) {
   }
   $un = Get-Unresolved $D
   if ($un.Count) { $b.Add("$($un.Count) unresolved thread(s) (pr-threads.ps1, then pr-reply.ps1)") }
-  if (Test-CopilotRequired $D) {
-    if ($D.CopilotPending) { $b.Add('Copilot review requested but not in yet (pr-wait.ps1)') }
-    elseif ($D.CopilotReviews.Count -eq 0) { $b.Add("Copilot review required ($($D.CodeAdds) code lines added) and not requested (pr-request-review.ps1)") }
-    elseif ($D.CopilotReviews[-1].Commit -ne $D.Head) { $w.Add('Copilot reviewed an older commit than the head (fine unless you pushed big changes since)') }
-  } elseif ($D.CopilotPending) { $w.Add('a Copilot review is pending; merging now skips it') }
-  # fail closed when a connection was cut at 100: hidden files/threads/checks could change the verdict (Copilot review of PR 186)
-  if ($D.FilesTruncated) { $b.Add('more than 100 files changed: code-line count unreliable, decide the Copilot rule by hand') }
+  if (Test-ReviewRequired $D) {
+    if ($D.BugHunts.Count -eq 0) { $b.Add("bug hunt required ($($D.CodeAdds) code lines added) and not run (pr-bug-hunt.ps1 once CI is green)") }
+    elseif ($D.BugHunts[-1].Commit -ne $D.Head) { $w.Add('the bug hunt read an older commit than the head (fine unless you pushed big changes since)') }
+  }
+  # fail closed when a connection was cut at 100: hidden files/threads/checks could change the verdict (review of PR 186)
+  if ($D.FilesTruncated) { $b.Add('more than 100 files changed: code-line count unreliable, decide the bug-hunt rule by hand') }
   if ($D.ThreadsTruncated) { $b.Add('more than 100 review threads: cannot verify all are resolved') }
   if ($D.CiTruncated) { $b.Add('more than 100 checks: cannot verify all passed') }
   if ($D.MergeState -eq 'DIRTY' -or $D.Mergeable -eq 'CONFLICTING') {
@@ -175,3 +169,95 @@ function Get-FailedTests([string[]]$Log) {
 }
 
 function Test-Flaky([string]$Name) { [bool]($script:KnownFlaky | Where-Object { $Name -like "*$_*" }) }
+
+# ---- bug hunt (pr-bug-hunt.ps1, .claude/skills/bug-hunt) ----
+
+# What makes a change risky here, matched against its added and removed lines. The weight is what a mistake in
+# that area costs: an orphaned process, lost config or a leaked secret outranks a UI slip. Each area counts once.
+$script:BugHuntSignals = [ordered]@{
+  process   = @{ weight = 3; pattern = 'Process\.Start|ProcessStartInfo|\.Kill\(|WaitForExit|JobObject|CreateProcess' }
+  data      = @{ weight = 3; pattern = 'File\.(Write|Move|Delete|Replace|Copy|Create|Open)|Directory\.(Delete|Move|Create)|FileStream|StreamWriter|Registry\w*|ConfigDocument|ConfigMapper|Serializ|Deserializ|FileSystemWatcher' }
+  secrets   = @{ weight = 3; pattern = 'Secret|Credential|[Pp]assword|PasswordVault|Cred(Read|Write)|ProtectedData|Authorization|Bearer' }
+  async     = @{ weight = 2; pattern = 'CancellationToken|CancelAfter|Timeout|WaitAsync|\.Wait\(|\.Result\b|GetResult\(\)|async void|TaskCompletionSource|ContinueWith|Task\.(Run|WhenAny|WhenAll)' }
+  threads   = @{ weight = 2; pattern = '\block\s*\(|SemaphoreSlim|Interlocked|Volatile|ConcurrentDictionary|Channel<|new Thread\(|ThreadPool|DispatcherQueue|SendMessage|PostMessage|WndProc' }
+  idle      = @{ weight = 2; pattern = 'System\.Threading\.Timer|new Timer\(|PeriodicTimer|DispatcherTimer|Task\.Delay|Thread\.Sleep|while\s*\(\s*true\s*\)|SetTimer' }
+  native    = @{ weight = 2; pattern = 'LibraryImport|DllImport|Marshal\.|SafeHandle|CloseHandle|ComWrappers|CoCreateInstance|IUnknown|\bunsafe\b|PInvoke\.|GetLastError|HRESULT' }
+  aot       = @{ weight = 2; pattern = 'Activator\.|System\.Reflection|GetMethod\(|GetProperty\(|MakeGenericType|\bdynamic\b|Assembly\.Load|Type\.GetType\(|RequiresUnreferencedCode|UnconditionalSuppressMessage' }
+  lifecycle = @{ weight = 2; pattern = 'Dispose|IDisposable|Register\w*\(|Unregister\w*|Subscribe|Unsubscribe|\+=\s*(On[A-Z]|\(|async\b|delegate)|Reload|OnClosed|Unloaded' }
+  focus     = @{ weight = 2; pattern = 'SetForegroundWindow|\.Activate\(|ShowWindow|SW_SHOW\b|NOACTIVATE|SetFocus|AllowSetForegroundWindow' }
+  ipc       = @{ weight = 2; pattern = 'NamedPipe|PipeStream|PipeServer|PipeClient' }
+  text      = @{ weight = 1; pattern = 'Substring|\.IndexOf\(|\.Split\(|\[\^\d|\.\.\^?\d*\]|Span<|\.Length\s*-\s*1|TryParse|\.Parse\(|CultureInfo|StringComparison' }
+}
+# Files every run, reload or pipe call goes through; a slip there reaches every flow.
+$script:BugHuntCoreFiles = 'FlowRunner|FlowLauncher|EngineController|EngineHost|PipeServer|Protocol|ConfigMapper|ConfigDocument|ConfigValidator|TriggerService|Scheduler|ComThread|StepValues'
+$script:BugHuntLevels = [ordered]@{
+  low      = @{ model = 'sonnet'; effort = 'medium' }
+  standard = @{ model = 'opus'; effort = 'medium' }
+  high     = @{ model = 'opus'; effort = 'high' }
+  max      = @{ model = 'opus'; effort = 'xhigh' }
+}
+# Score at or above each bound picks that level; below standard is low. A diff over 800 changed lines with any
+# risk at all goes up a level.
+$script:BugHuntBounds = [ordered]@{ max = 12; high = 7; standard = 3 }
+$script:BugHuntBudget = 2
+
+# Paths the hunt reads (git pathspec): the same "non-test code" as Test-CodePath, minus binaries.
+function Get-BugHuntPathspec([string[]]$Path) {
+  @('--') + $(if ($Path) { $Path } else { @('.') }) + @(':(exclude)*.md', ':(exclude)docs/**', ':(exclude)tests/**',
+    ':(exclude)*.tests.ps1', ':(exclude)*.png', ':(exclude)*.ico', ':(exclude)*.jpg', ':(exclude)*.gif')
+}
+
+# $Diff: unified diff lines; $Files: changed paths. Returns @{ Score; Reasons[]; Level }.
+function Get-BugHuntRisk([string[]]$Diff, [string[]]$Files) {
+  $changed = @($Diff | Where-Object { $_ -match '^[+-](?![+-]{2} )' })
+  $score = 0; $reasons = [System.Collections.Generic.List[string]]::new()
+  foreach ($name in $script:BugHuntSignals.Keys) {
+    $hits = @($changed | Where-Object { $_ -cmatch $script:BugHuntSignals[$name].pattern }).Count
+    if ($hits) { $score += $script:BugHuntSignals[$name].weight; $reasons.Add("$name($hits)") }
+  }
+  $core = @($Files | Where-Object { $_ -match "/($script:BugHuntCoreFiles)\.cs$" }).Count
+  if ($core) { $score += 2; $reasons.Add("core-files($core)") }
+  $level = 'low'
+  foreach ($name in $script:BugHuntBounds.Keys) { if ($score -ge $script:BugHuntBounds[$name]) { $level = $name; break } }
+  if ($changed.Count -gt 800 -and $score -gt 0 -and $level -ne 'max') {
+    $keys = @($script:BugHuntLevels.Keys); $level = $keys[$keys.IndexOf($level) + 1]; $reasons.Add("big-diff($($changed.Count) lines)")
+  }
+  [pscustomobject]@{ Score = $score; Reasons = @($reasons); Level = $level }
+}
+
+# New-side line numbers inside each file's hunks, from `git diff -U3` text: where GitHub accepts an inline comment.
+function Get-DiffLineMap([string[]]$Diff) {
+  $map = @{}; $file = $null
+  foreach ($l in $Diff) {
+    if ($l -match '^\+\+\+ (?:b/)?(.+)$') { $file = if ($Matches[1] -eq '/dev/null') { $null } else { $Matches[1] }; if ($file -and -not $map[$file]) { $map[$file] = [System.Collections.Generic.HashSet[int]]::new() } }
+    elseif ($file -and $l -match '^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@') {
+      $start = [int]$Matches[1]; $count = if ($Matches[2]) { [int]$Matches[2] } else { 1 }
+      for ($i = $start; $i -lt $start + $count; $i++) { [void]$map[$file].Add($i) }
+    }
+  }
+  $map
+}
+
+function Format-BugHuntFinding($F) {
+  $ev = if ($F.evidence) { "`n`nEvidence: " + (($F.evidence | ForEach-Object { "``$_``" }) -join ', ') } else { '' }
+  "**Bug hunt · $($F.severity) · $($F.confidence)** — $($F.title)`n`n$($F.scenario)$ev`n`nFix: $($F.fix)"
+}
+
+# Review body; the first line's marker is how pr-lib finds bug-hunt reviews and counts the budget.
+function Format-BugHuntBody($R, [string[]]$Unanchored) {
+  $n = @($R.findings).Count
+  $lines = @("<!-- bug-hunt head=$($R.head) findings=$n -->",
+    "**Bug hunt** (run $($R.run) of $script:BugHuntBudget, $($R.level): $($R.model)/$($R.effort); $(($R.reasons) -join ', '))",
+    '', $(if ($n) { "$n finding(s), one thread each. Reply and resolve each: fixed in <sha>, or declined and why." } else { 'No findings.' }),
+    '', "Coverage: $($R.coverage)")
+  if ($Unanchored) { $lines += @('', 'Findings outside the PR diff are anchored on the file they name, or on the first changed file:') + ($Unanchored | ForEach-Object { "- $_" }) }
+  $lines -join "`n"
+}
+
+function Format-HuntState($D) {
+  $req = if (Test-ReviewRequired $D) { 'required' } else { 'not required' }
+  if (-not $D.BugHunts.Count) { return "none; $req ($($D.CodeAdds) code lines added)" }
+  $h = $D.BugHunts[-1]; $n = if ($h.Body -match 'findings=(\d+)') { $Matches[1] } else { '?' }
+  $at = if ($h.Body -match 'head=([0-9a-f]{7})') { $Matches[1] } else { '?' }
+  "$($D.BugHunts.Count) of $script:BugHuntBudget, last on $at with $n finding(s)$(if ($h.Body -notmatch "head=$($D.Head)") { ' (older than head)' }); $req"
+}

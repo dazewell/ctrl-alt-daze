@@ -34,9 +34,10 @@ Skills resolve product names from the current solution, project metadata and ide
 - `resume` — session start and near-cap stop. Use first in every session.
 - `repo-workflow` — orient → branch → work → record → commit → definition of done. Use for every task.
 - `build` — prerequisites, build/run/test/publish/measure commands, troubleshooting.
-- `pr-review` — Copilot review, review threads, CI wait/rerun, ready check and merge via `scripts/pr-*.ps1` (D-122). Use for every PR.
+- `pr-review` — bug-hunt review (local `claude -p`, D-155), review threads, CI wait/rerun, ready check and merge via `scripts/pr-*.ps1` (D-122). Use for every PR.
 - `release` — cut a release with `scripts/cut-release.ps1`; only when the user asks.
 - `coordinator` — run a coordinator session: route tasks to child sessions, track PRs, cut releases on request; use only in coordinator sessions.
+- `bug-hunt` — the cold reviewer run only by `scripts/pr-bug-hunt.ps1`; never load it in a working session.
 - `knowledge-log` — what goes into which doc, entry formats, brevity rules.
 
 If a skill or this file is wrong, fix it in the same change that found the problem.

@@ -69,10 +69,10 @@ PR description: what changed, why (link D-xxx), how it was verified, what's left
 
 ## 6. Merge policy (user, 2026-11-01: agents merge while the app is being scaffolded)
 
-Agents merge their own PRs so work isn't blocked while the user sleeps. Everything about Copilot review, review
+Agents merge their own PRs so work isn't blocked while the user sleeps. Everything about the bug-hunt review, review
 threads, CI wait/rerun, the ready check and the merge itself is in the **`pr-review` skill** (D-122): follow it, don't
 hand-roll `gh` calls. In short: merge commits only via `scripts/pr-merge.ps1` (never `--auto` for children, `--squash`
-or `--admin`); a Copilot review is required for PRs adding more than 100 lines of non-test code (max 2 per PR);
+or `--admin`); a bug hunt (`pr-bug-hunt.ps1`, D-155) is required for PRs adding more than 100 lines of non-test code (max 2 per PR);
 every thread is replied to and resolved first. To wait for a PR to land (a dependency, a release):
 `pwsh scripts/wait-pr.ps1 60,61` in a background process or persistent terminal session. Wait on that process;
 never add a separate polling loop or ask the user "is it merged?".
