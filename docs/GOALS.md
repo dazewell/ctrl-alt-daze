@@ -110,7 +110,7 @@ v0.22.0 is released (GitHub Releases; installed copies update themselves). What'
   (offload endpoints are named "Headphones"/"Technics"): change `library.audio.technics.match`.
   When it works, scd can be stopped.
 - **Android (Fire TV), Sunshine, services (optional, untested live):** `android.*` steps are tested only with fakes and a
-  dry run. To try them, add your TV under `library.android` (address, inputs as up/down moves, D-032). A
+  dry run. To try them, add the device under `library.android` (address, key sequences, D-032, D-156). A
   `credential:` is a Credential Manager entry named `CtrlAltDaze:<name>` (D-031). Most services can only be
   started or stopped by an admin, so `service.*` fails with a message for those (D-033).
 

@@ -61,6 +61,30 @@ public static class ManualItems
         }
     }
 
+    /// <summary>
+    /// An Android device's new address and adb path (D-156), or the one sentence saying why not. The key stays, so flows
+    /// keep naming it; its sequences stay. <paramref name="adb"/> "" = adb on PATH.
+    /// </summary>
+    public static (Library? Library, string? Error) EditAndroid(Library library, string key, string address, string adb)
+    {
+        ArgumentNullException.ThrowIfNull(library);
+        ArgumentNullException.ThrowIfNull(address);
+        ArgumentNullException.ThrowIfNull(adb);
+        address = address.Trim();
+        adb = adb.Trim().Trim('"');
+        if (library.Android.FirstOrDefault(d => d.Key == key) is not { } device)
+            return (null, $"\"{key}\" isn't in your Library anymore.");
+        if (NormalizeAndroid(address) is not { } normal)
+            return (null, address.Length == 0 ? "Type the device's network address." : $"\"{address}\" isn't a network address (like 192.168.1.50 or 192.168.1.50:5555).");
+        var serial = AndroidDevice.SerialOf(normal);
+        if (library.Android.FirstOrDefault(d => d.Key != key && string.Equals(d.Serial, serial, StringComparison.OrdinalIgnoreCase)) is { } same)
+            return (null, $"{same.Key} already has this address.");
+        if (adb.Length > 0 && (adb.IndexOfAny(Path.GetInvalidPathChars()) >= 0 || !adb.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)))
+            return (null, "adb's path is the full path of adb.exe, or empty when adb is on PATH.");
+        var edited = device with { Address = normal, Adb = adb.Length == 0 ? null : adb };
+        return (library with { Android = [.. library.Android.Select(d => d.Key == key ? edited : d)] }, null);
+    }
+
     /// <summary>"b8-20-8e-ed-48-fc", "B8208EED48FC" → "B8:20:8E:ED:48:FC"; null when it isn't six hex bytes.</summary>
     public static string? NormalizeBluetooth(string text)
     {

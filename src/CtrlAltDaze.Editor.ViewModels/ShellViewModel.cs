@@ -191,7 +191,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         var editor = new Canvas.FlowCanvasViewModel(Session, flowId, _clipboard, EditorSettings);
         Inspector = new Inspector.InspectorViewModel(Session, editor, _engine, _post, desktop: Desktop);
         Inspector.OpenFlowRequested += OnCalledFlowRequested;
-        Inspector.AndroidInputsRequested += OnAndroidInputsRequested;
+        Inspector.AndroidSequencesRequested += OnAndroidSequencesRequested;
         Inspector.BoundDevicesRequested += OnBoundDevicesRequested;
         Run = new Runs.RunOverlayViewModel(editor, _engine, _post);
         Editor = editor;
@@ -203,18 +203,18 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     private void OnCalledFlowRequested(string flowId) => CalledFlowRequested?.Invoke(flowId);
 
     /// <summary>
-    /// Android input › "Add inputs in the Library" (L1): the Library's Android section has the device's inputs open;
+    /// Play sequence › "Add sequences in the Library" (L1): the Library's Android section has the device's sequences open;
     /// the window asks about the draft (D-047), then shows the Library page.
     /// </summary>
     public event Action? LibraryRequested;
 
-    private void OnAndroidInputsRequested(string deviceKey)
+    private void OnAndroidSequencesRequested(string deviceKey)
     {
-        Library.RevealInputs(deviceKey);
+        Library.RevealSequences(deviceKey);
         LibraryRequested?.Invoke();
     }
 
-    /// <summary>An input's "Bind devices in Library": same hand-over as the Android inputs, without a device to reveal.</summary>
+    /// <summary>An input's "Bind devices in Library": same hand-over as the Android sequences, without a device to reveal.</summary>
     private void OnBoundDevicesRequested() => LibraryRequested?.Invoke();
 
     public void CloseFlow()
@@ -224,7 +224,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         if (Inspector is not null)
         {
             Inspector.OpenFlowRequested -= OnCalledFlowRequested;
-            Inspector.AndroidInputsRequested -= OnAndroidInputsRequested;
+            Inspector.AndroidSequencesRequested -= OnAndroidSequencesRequested;
             Inspector.BoundDevicesRequested -= OnBoundDevicesRequested;
         }
         Inspector?.Dispose();

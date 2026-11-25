@@ -74,6 +74,9 @@ public sealed class AndroidDocument
     public string? Adb { get; set; }
 
     /// <summary>Read whole, like <c>with:</c>, so a wrong shape is a problem on this entry, not on the file (D-021).</summary>
+    public ParamDocument? Sequences { get; set; }
+
+    /// <summary>Before D-156: D-pad moves per TV input. Read and turned into sequences; never written.</summary>
     public ParamDocument? Inputs { get; set; }
 }
 

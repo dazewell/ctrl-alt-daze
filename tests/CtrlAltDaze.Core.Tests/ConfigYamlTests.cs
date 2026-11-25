@@ -322,20 +322,43 @@ public class ConfigYamlTests
     }
 
     [Fact]
-    public void AndroidEntryReadsItsInputs()
+    public void AndroidEntryReadsItsSequences()
     {
-        var config = LoadClean("library: { android: { tv: { address: 192.168.1.50, inputs: { hdmi2: [down, down] } } } }");
+        var config = LoadClean("library: { android: { tv: { address: 192.168.1.50, sequences: { hdmi2: [tv_input, dpad_down, dpad_center] } } } }");
 
         var tv = Assert.Single(config.Library.Android);
         Assert.Equal("192.168.1.50", tv.Address);
         Assert.Null(tv.Adb);
-        Assert.Equal(["down", "down"], tv.Inputs["hdmi2"]);
+        Assert.Equal(["tv_input", "dpad_down", "dpad_center"], tv.Sequences["hdmi2"]);
         Assert.Contains("android:", ConfigYaml.Save(config), StringComparison.Ordinal);
     }
 
     [Fact]
-    public void LoneAndroidMoveIsAOneMoveList() =>
-        Assert.Equal(["down"], LoadClean("library: { android: { tv: { address: 1.2.3.4, inputs: { hdmi2: down } } } }").Library.Android[0].Inputs["hdmi2"]);
+    public void LoneAndroidKeyIsAOneKeyList() =>
+        Assert.Equal(["home"], LoadClean("library: { android: { tv: { address: 1.2.3.4, sequences: { home: home } } } }").Library.Android[0].Sequences["home"]);
+
+    [Fact]
+    public void OldAndroidInputsBecomeSequencesThatPressTheSameKeys()
+    {
+        var config = LoadClean("library: { android: { tv: { address: 1.2.3.4, inputs: { hdmi2: [down, down], first: down } } } }");
+
+        var tv = Assert.Single(config.Library.Android);
+        Assert.Equal(["wakeup", "tv_input", "dpad_down", "dpad_down", "dpad_center"], tv.Sequences["hdmi2"]);
+        Assert.Equal(["wakeup", "tv_input", "dpad_down", "dpad_center"], tv.Sequences["first"]);
+        var yaml = ConfigYaml.Save(config);
+        Assert.Contains("sequences:", yaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("inputs:", yaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnAndroidKeyThatIsntAKeyNameIsAProblemOnThatDevice()
+    {
+        var load = ConfigYaml.Load("library: { android: { tv: { address: 1.2.3.4, sequences: { x: [home, left arrow] } } } }");
+
+        var problem = Assert.Single(load.Problems);
+        Assert.Equal("library.android.tv.sequences.x", problem.Path);
+        Assert.Empty(load.Config!.Library.Android);
+    }
 
     [Fact]
     public void OldFiretvSectionPointsAtAndroid()

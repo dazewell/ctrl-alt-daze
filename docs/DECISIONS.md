@@ -1051,7 +1051,7 @@ live test OK'd; built in F5, fix/m13-display-restore). Refines D-019.
   compare less.
 
 ## D-078 · 2026-11-04 · Android inputs are edited in the Library; a rename follows the steps that pick it
-Status: accepted (user, 2026-11-03, L1). Extends D-046.
+Status: accepted (user, 2026-11-03, L1). Extends D-046. Inputs became key sequences: D-156.
 - Decision: an Android card has an Inputs toggle that opens a panel under it: each input with its D-pad moves as an
   ordered list of Up/Down chips (× removes one; "Add Up"/"Add Down" append), Rename (flyout, refused when empty or
   taken on that device) and Remove (off while used, the tooltip says why), plus Add input (offers "input", "input-2"…;
@@ -2046,3 +2046,20 @@ Status: accepted (user, 2026-11-25: Copilot review no longer available; replicat
 - Why not `/code-review` in the working session: it reads with the author's context; the point is a cold reader.
 - Why not keep `pr-request-review.ps1`: nothing could request Copilot any more; git history has it.
 - Revisit if: Copilot review comes back, or bug hunts keep missing bugs a later live check finds (tune the skill's lists).
+
+## D-156 · 2026-11-25 · Android "inputs" become key sequences; an Android device's address and adb path are editable
+Status: accepted (user, 2026-11-25: "rename Inputs to Sequences … something more abstract"; picked "any keys").
+- Decision: an Android device keeps named **sequences**, each a list of any Android key names (`AndroidKeys.IsName`:
+  letters, digits, `_`; the Send keys table is suggested), sent in order by the step titled "Play sequence"; nothing is
+  pressed around them. YAML `library.android.<key>.sequences`. Old `inputs:` (D-pad moves) still load, each turned into
+  `[wakeup, tv_input, the moves as dpad_up/dpad_down, dpad_center]` (exactly what the old step pressed); the next save
+  writes `sequences:` and drops `inputs:`. A name in both is a problem on that entry. The step id `android.input` and its
+  param `input` stay (D-104 choice 9: no id renames). The card's Edit flyout changes address and adb.exe path
+  (`ManualItems.EditAndroid`: same address rules as Add by hand, another device's serial refused); the key stays, so
+  flows keep working. User-facing text says "device", not "TV" (a phone or box is an Android device too).
+- Why: "input" only fit a TV's HDMI list, and the user's devices aren't all TVs; a fixed wake + TV-input + OK wrapper
+  made the list useless for anything else. Converting on load keeps every old flow doing what it did.
+- Why not rename the step id / param: D-104 choice 9, and every saved flow would need a rewrite. Why not keep Up/Down
+  only: that is the TV case again. Why not drop old `inputs:` like `firetv:` (D-045): the user's file has them; a load
+  error would disable the flows that use them.
+- Revisit if: sequences need delays between keys or text input (`input text`): today each item is one key event.

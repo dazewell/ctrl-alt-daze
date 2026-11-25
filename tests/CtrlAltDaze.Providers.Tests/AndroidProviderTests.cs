@@ -30,7 +30,8 @@ public class AndroidProviderTests
     }
 
     private static readonly AndroidDevice Tv = new("tv", "192.168.1.50",
-        new([KeyValuePair.Create("hdmi2", new ValueList<string>(["down", "down"])), KeyValuePair.Create("pc", new ValueList<string>(["up"]))]));
+        new([KeyValuePair.Create("hdmi2", AndroidSequenceEdits.FromMoves(["down", "down"])), KeyValuePair.Create("pc", new ValueList<string>(["home", "dpad_up"])),
+            KeyValuePair.Create("empty", new ValueList<string>([]))]));
 
     private static StepContext Context(string step, params (string Name, string Value)[] with)
     {
@@ -74,7 +75,7 @@ public class AndroidProviderTests
         var failure = await Assert.ThrowsAsync<StepFailedException>(
             () => Run(new AndroidInputProvider(new AndroidRemote(adb, TimeProvider.System)), Context("android.input", ("input", "hdmi9"))));
 
-        Assert.Equal("The Android device \"tv\" has no input called \"hdmi9\" (hdmi2, pc).", failure.Message);
+        Assert.Equal("The Android device \"tv\" has no sequence called \"hdmi9\" (hdmi2, pc, empty).", failure.Message);
         Assert.Empty(adb.Calls);
     }
 

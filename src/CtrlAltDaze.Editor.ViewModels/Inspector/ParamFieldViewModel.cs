@@ -120,7 +120,7 @@ public sealed partial class ParamFieldViewModel : ObservableObject
     public bool HasSuggestionHint => SuggestionHint.Length > 0 && HintDevice is null;
 
     /// <summary>
-    /// Android input: the device whose inputs the hint's link opens in the Library (L1), or null for a plain hint.
+    /// Play sequence: the device whose sequences the hint's link opens in the Library (L1), or null for a plain hint.
     /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSuggestionHint), nameof(HasHintLink))]

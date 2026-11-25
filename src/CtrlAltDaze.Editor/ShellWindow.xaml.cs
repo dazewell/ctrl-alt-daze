@@ -451,7 +451,7 @@ public sealed partial class ShellWindow : Window
     }
 
     /// <summary>
-    /// Android input › "Add inputs in the Library" (L1): Library in the pane; its SelectionChanged leaves the flow with
+    /// Play sequence › "Add sequences in the Library" (L1): Library in the pane; its SelectionChanged leaves the flow with
     /// the D-047 prompt, and Cancel there keeps the flow open.
     /// </summary>
     private void OnLibraryRequested() => Navigation.SelectedItem = LibraryNavItem;

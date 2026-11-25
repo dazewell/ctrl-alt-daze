@@ -499,10 +499,10 @@ public sealed partial class InspectorViewModel : ObservableObject, IDisposable
             case { Source: SuggestSource.Config, Kind: ParamSuggest.Flags }:
                 field.SetSuggestions(FlagNames(_session.Current), "");
                 break;
-            case { Source: SuggestSource.Config, Kind: ParamSuggest.AndroidInputs }:
+            case { Source: SuggestSource.Config, Kind: ParamSuggest.AndroidSequences }:
                 var device = AndroidDeviceOf(step);
-                field.SetSuggestions(device?.Inputs.Keys.Select(i => new SuggestionItem(i, "")) ?? [],
-                    device is null ? "Choose the Android device first." : AddInputsHint, device?.Key);
+                field.SetSuggestions(device?.Sequences.Keys.Select(i => new SuggestionItem(i, "")) ?? [],
+                    device is null ? "Choose the Android device first." : AddSequencesHint, device?.Key);
                 break;
         }
     }
@@ -552,8 +552,8 @@ public sealed partial class InspectorViewModel : ObservableObject, IDisposable
         });
     }
 
-    /// <summary>The Android input hint; a link that opens the device's inputs in the Library (L1).</summary>
-    public const string AddInputsHint = "Add inputs in the Library.";
+    /// <summary>The Play sequence hint; a link that opens the device's sequences in the Library (L1).</summary>
+    public const string AddSequencesHint = "Add sequences in the Library.";
 
     /// <summary>The step's Android device: by key, or through this flow's input (<c>$tv</c>) to its default.</summary>
     private AndroidDevice? AndroidDeviceOf(StepNode step)
@@ -568,14 +568,14 @@ public sealed partial class InspectorViewModel : ObservableObject, IDisposable
         return key is null ? null : _session.Current.Library.Android.FirstOrDefault(d => d.Key == key);
     }
 
-    /// <summary>"Add inputs in the Library" › the shell shows Library › Android with this device's inputs open.</summary>
-    public event Action<string>? AndroidInputsRequested;
+    /// <summary>"Add sequences in the Library" › the shell shows Library › Android with this device's sequences open.</summary>
+    public event Action<string>? AndroidSequencesRequested;
 
-    public void OpenAndroidInputs(ParamFieldViewModel field)
+    public void OpenAndroidSequences(ParamFieldViewModel field)
     {
         ArgumentNullException.ThrowIfNull(field);
         if (field.HintDevice is { } device)
-            AndroidInputsRequested?.Invoke(device);
+            AndroidSequencesRequested?.Invoke(device);
     }
 
     /// <summary>"Print Spooler · Running", "Saved in Windows".</summary>

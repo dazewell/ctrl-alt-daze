@@ -233,7 +233,7 @@ public static class ProviderCatalog
                 new ValueSpec("body", ValueKind.Text, "Response") { Sensitive = true, Help = "What the server sent back (the first 1,000 characters, or 64 KB when a Get from text reads it). Only read when a later step uses it" },
             ],
         },
-        // Android order (REVIEW F6): connect, apps, input and keys, media and sound, screen, wake/sleep.
+        // Android order (REVIEW F6): connect, apps, sequence and keys, media and sound, screen, wake/sleep.
         new("android.connect", "Connect", Tv, TimeSpan.FromSeconds(20),
             [Ref("device", "Android device", LibraryKind.Android)])
         { Resources = ["adb:{device}"] },
@@ -267,13 +267,13 @@ public static class ProviderCatalog
             },
         ])
         { Resources = ["adb:{device}"] },
-        new("android.input", "Choose input", Tv, TimeSpan.FromSeconds(20),
+        new("android.input", "Play sequence", Tv, TimeSpan.FromSeconds(20),
         [
             Ref("device", "Android device", LibraryKind.Android),
-            new("input", ParamKind.Text, "Input")
+            new("input", ParamKind.Text, "Sequence")
             {
-                Required = true, Help = "One of the inputs saved with the Android device.",
-                Suggest = ParamSuggest.Config(ParamSuggest.AndroidInputs),
+                Required = true, Help = "One of the key sequences saved with the Android device. Its keys are sent in order.",
+                Suggest = ParamSuggest.Config(ParamSuggest.AndroidSequences),
             },
         ])
         { Resources = ["adb:{device}"] },
@@ -610,7 +610,7 @@ public static class ProviderCatalog
             new("layout", ParamKind.Choice, "Layout") { Choices = ["list", "grid"], Captions = ["List", "Grid"], Default = "list" },
             new("size", ParamKind.Choice, "Size")
             {
-                Choices = ["normal", "large"], Captions = ["Normal", "Large"], Default = "normal", Help = "Large is for a TV across the room.",
+                Choices = ["normal", "large"], Captions = ["Normal", "Large"], Default = "normal", Help = "Large is for a screen across the room.",
             },
             new("closeAfter", ParamKind.Duration, "Close after")
             {

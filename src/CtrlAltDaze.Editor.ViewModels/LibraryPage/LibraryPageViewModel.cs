@@ -124,7 +124,7 @@ public sealed partial class LibrarySectionViewModel : ObservableObject
         _ => "192.168.1.50 or 192.168.1.50:5555",
     };
 
-    public string ManualNamePlaceholder => Kind == LibraryKind.Android ? "Living room TV" : "Technics headphones";
+    public string ManualNamePlaceholder => Kind == LibraryKind.Android ? "Living room box" : "Technics headphones";
 
     public string ManualHint => Kind switch
     {
@@ -198,7 +198,7 @@ public sealed partial class LibraryPageViewModel : ObservableObject, IDisposable
             new(LibraryKind.Display, "Displays", LibraryDevices.Glyph(LibraryKind.Display),
                 "No screen layouts yet. Set your screens up the way you like, then capture the layout."),
             new(LibraryKind.Android, "Android", LibraryDevices.Glyph(LibraryKind.Android),
-                "No Android devices yet. Turn on network debugging on the TV, then add it from Windows or by hand by its address."),
+                "No Android devices yet. Turn on network debugging on the device, then add it from Windows or by hand by its address."),
             new(null, "Programs", FlowItemViewModel.DecodeGlyph("E756"),
                 "No programs yet. Programs show up here once a flow runs one."),
         ];
@@ -309,7 +309,7 @@ public sealed partial class LibraryPageViewModel : ObservableObject, IDisposable
                 item = new LibraryItemViewModel(row.Key, section.Glyph, (i, ct) => TestAsync(kind, i.Key, ct))
                 {
                     CanOpenLocation = kind is null,
-                    HasInputs = kind == LibraryKind.Android,
+                    HasSequences = kind == LibraryKind.Android,
                     SidesChanged = kind == LibraryKind.Bound ? SetSides : null,
                 };
             item.Title = row.Title;
@@ -334,7 +334,13 @@ public sealed partial class LibraryPageViewModel : ObservableObject, IDisposable
             if (kind == LibraryKind.Display)
                 item.Screens = ScreenDetails(config.Library.Displays.First(d => d.Key == row.Key), live);
             if (kind == LibraryKind.Android)
-                SyncInputs(item, config, config.Library.Android.First(d => d.Key == row.Key));
+            {
+                var device = config.Library.Android.First(d => d.Key == row.Key);
+                item.CanEditAddress = CanEdit;
+                item.AddressText = device.Address;
+                item.AdbText = device.Adb ?? "";
+                SyncSequences(item, config, device);
+            }
             section.Items.Add(item);
         }
         if (kind == LibraryKind.Bound)
@@ -392,21 +398,21 @@ public sealed partial class LibraryPageViewModel : ObservableObject, IDisposable
         });
     }
 
-    /// <summary>Android: the inputs in file order; rows of unchanged names stay (an open rename keeps its box).</summary>
-    private void SyncInputs(LibraryItemViewModel item, Configuration config, AndroidDevice device)
+    /// <summary>Android: the sequences in file order; rows of unchanged names stay (an open rename keeps its box).</summary>
+    private void SyncSequences(LibraryItemViewModel item, Configuration config, AndroidDevice device)
     {
-        item.CanEditInputs = CanEdit;
-        item.NewInputName = AndroidInputEdits.NewName(device);
-        var names = device.Inputs.Keys.ToList();
-        if (!item.Inputs.Select(i => i.Name).SequenceEqual(names))
+        item.CanEditSequences = CanEdit;
+        item.NewSequenceName = AndroidSequenceEdits.NewName(device);
+        var names = device.Sequences.Keys.ToList();
+        if (!item.Sequences.Select(i => i.Name).SequenceEqual(names))
         {
-            var existing = item.Inputs.ToDictionary(i => i.Name, StringComparer.Ordinal);
-            item.Inputs.Clear();
+            var existing = item.Sequences.ToDictionary(i => i.Name, StringComparer.Ordinal);
+            item.Sequences.Clear();
             foreach (var name in names)
-                item.Inputs.Add(existing.GetValueOrDefault(name) ?? new AndroidInputViewModel(device.Key, name));
+                item.Sequences.Add(existing.GetValueOrDefault(name) ?? new AndroidSequenceViewModel(device.Key, name));
         }
-        foreach (var input in item.Inputs)
-            input.Load(device.Inputs[input.Name], AndroidInputEdits.Users(config, device.Key, input.Name).Count, CanEdit);
+        foreach (var sequence in item.Sequences)
+            sequence.Load(device.Sequences[sequence.Name], AndroidSequenceEdits.Users(config, device.Key, sequence.Name).Count, CanEdit);
     }
 
     private static string Detail(Library library, LibraryKind kind, string key) => kind switch
@@ -427,12 +433,12 @@ public sealed partial class LibraryPageViewModel : ObservableObject, IDisposable
         return (bound.Name ?? bound.Key) == bluetooth ? $"Audio: {audio}" : $"{bluetooth} + {audio}";
     }
 
-    /// <summary>"192.168.1.50 · 2 inputs".</summary>
-    private static string AndroidDetail(AndroidDevice device) => device.Inputs.Count switch
+    /// <summary>"192.168.1.50 · 2 sequences".</summary>
+    private static string AndroidDetail(AndroidDevice device) => device.Sequences.Count switch
     {
-        0 => $"{device.Address} · No inputs yet",
-        1 => $"{device.Address} · 1 input",
-        var n => $"{device.Address} · {n} inputs",
+        0 => $"{device.Address} · No sequences yet",
+        1 => $"{device.Address} · 1 sequence",
+        var n => $"{device.Address} · {n} sequences",
     };
 
     /// <summary>
@@ -569,13 +575,13 @@ public sealed partial class LibraryPageViewModel : ObservableObject, IDisposable
         return (kind, device) switch
         {
             (LibraryKind.Android, null) => new(TestOutcome.Caution,
-                $"adb isn't connected to {title} right now. The flow connects first, so make sure the TV is on."),
+                $"adb isn't connected to {title} right now. The flow connects first, so make sure the device is on."),
             (_, null) => new(TestOutcome.Failed, kind == LibraryKind.Bluetooth
                 ? $"Windows couldn't find {title}. Make sure it's paired, then try again."
                 : $"Windows couldn't find {title}. Make sure it's plugged in or turned on, then try again."),
             (LibraryKind.Android, _) when !string.Equals(LibraryDevices.Describe(kind, device), "Connected", StringComparison.Ordinal) =>
                 new(TestOutcome.Caution, $"adb sees {title}, but it's {LibraryDevices.Describe(kind, device).ToLowerInvariant()}. "
-                    + "Allow debugging on the TV if it asks, then try again."),
+                    + "Allow debugging on the device if it asks, then try again."),
             (LibraryKind.Bluetooth, _) when !string.Equals(LibraryDevices.Describe(kind, device), "Connected", StringComparison.Ordinal) =>
                 new(TestOutcome.Caution, $"Found {title}. Not connected right now. The flow will still try."),
             _ => new(TestOutcome.Worked, LibraryDevices.Describe(kind, device) is { Length: > 0 } state
@@ -660,90 +666,136 @@ public sealed partial class LibraryPageViewModel : ObservableObject, IDisposable
         return true;
     }
 
-    // ---- Android inputs (L1, D-078) ----
-
     /// <summary>
-    /// Library › Android › Inputs: a new input with no moves, last in the list. False, with
-    /// <see cref="LibraryItemViewModel.AddInputError"/> saying why, when the name is empty or taken.
+    /// Android: a new network address and adb path (D-156); flows keep working, they name the device by its key. False,
+    /// with <see cref="LibraryItemViewModel.AddressError"/> saying why, when the address is wrong or another device has it.
     /// </summary>
-    public bool AddInput(LibraryItemViewModel item, string name)
+    public bool EditAndroid(LibraryItemViewModel item, string address, string adb)
     {
         ArgumentNullException.ThrowIfNull(item);
-        ArgumentNullException.ThrowIfNull(name);
-        if (!CanEdit || !item.HasInputs)
+        if (!CanEdit || !item.HasSequences)
             return false;
-        var refusal = AndroidInputEdits.Add(_session.Current, item.Key, name).Refusal;
-        item.AddInputError = InputError(refusal, name, item.Key);
-        if (refusal != InputEditRefusal.None)
+        var (library, error) = ManualItems.EditAndroid(_session.Current.Library, item.Key, address ?? "", adb ?? "");
+        item.AddressError = error;
+        if (library is null)
             return false;
-        // Applied to each version Update hands over, so an open flow's draft stays a draft (D-047).
-        _session.Update(c => AndroidInputEdits.Add(c, item.Key, name).Config);
+        _session.Update(c => ManualItems.EditAndroid(c.Library, item.Key, address ?? "", adb ?? "").Library is { } l ? c with { Library = l } : c);
         return true;
     }
 
-    /// <summary>A new name for an input; the <c>android.input</c> steps that picked it follow (D-046).</summary>
-    public bool RenameInput(AndroidInputViewModel input, string newName)
+    // ---- Android sequences (D-078, D-156) ----
+
+    /// <summary>
+    /// Library › Android › Sequences: a new sequence with no keys, last in the list. False, with
+    /// <see cref="LibraryItemViewModel.AddSequenceError"/> saying why, when the name is empty or taken.
+    /// </summary>
+    public bool AddSequence(LibraryItemViewModel item, string name)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        ArgumentNullException.ThrowIfNull(name);
+        if (!CanEdit || !item.HasSequences)
+            return false;
+        var refusal = AndroidSequenceEdits.Add(_session.Current, item.Key, name).Refusal;
+        item.AddSequenceError = SequenceError(refusal, name, item.Key);
+        if (refusal != SequenceEditRefusal.None)
+            return false;
+        // Applied to each version Update hands over, so an open flow's draft stays a draft (D-047).
+        _session.Update(c => AndroidSequenceEdits.Add(c, item.Key, name).Config);
+        return true;
+    }
+
+    /// <summary>A new name for a sequence; the "Play sequence" steps that played it follow (D-046).</summary>
+    public bool RenameSequence(AndroidSequenceViewModel input, string newName)
     {
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(newName);
         if (!CanEdit)
             return false;
-        var (config, refusal) = AndroidInputEdits.Rename(_session.Current, input.DeviceKey, input.Name, newName);
-        input.RenameError = InputError(refusal, newName, input.DeviceKey);
-        if (refusal != InputEditRefusal.None)
+        var (config, refusal) = AndroidSequenceEdits.Rename(_session.Current, input.DeviceKey, input.Name, newName);
+        input.RenameError = SequenceError(refusal, newName, input.DeviceKey);
+        if (refusal != SequenceEditRefusal.None)
             return false;
         if (!ReferenceEquals(config, _session.Current))
-            _session.Update(c => AndroidInputEdits.Rename(c, input.DeviceKey, input.Name, newName).Config);
+            _session.Update(c => AndroidSequenceEdits.Rename(c, input.DeviceKey, input.Name, newName).Config);
         return true;
     }
 
-    /// <summary>Only inputs no step picks: removing one in use would break that step.</summary>
+    /// <summary>Only sequences no step plays: removing one in use would break that step.</summary>
     [RelayCommand]
-    private void RemoveInput(AndroidInputViewModel input)
+    private void RemoveSequence(AndroidSequenceViewModel input)
     {
         if (!CanEdit)
             return;
-        if (AndroidInputEdits.Remove(_session.Current, input.DeviceKey, input.Name).Refusal == InputEditRefusal.None)
-            _session.Update(c => AndroidInputEdits.Remove(c, input.DeviceKey, input.Name).Config);
+        if (AndroidSequenceEdits.Remove(_session.Current, input.DeviceKey, input.Name).Refusal == SequenceEditRefusal.None)
+            _session.Update(c => AndroidSequenceEdits.Remove(c, input.DeviceKey, input.Name).Config);
     }
 
-    [RelayCommand]
-    private void AddUp(AndroidInputViewModel input) => SetMoves(input, [.. input.Moves.Select(m => m.Move), AndroidInputEdits.Up]);
+    /// <summary>
+    /// A key at the end of the sequence: one of the suggested names or any other key name. False, with
+    /// <see cref="AndroidSequenceViewModel.AddKeyError"/> saying why, when it isn't a key name.
+    /// </summary>
+    public bool AddKey(AndroidSequenceViewModel sequence, string key)
+    {
+        ArgumentNullException.ThrowIfNull(sequence);
+        ArgumentNullException.ThrowIfNull(key);
+        if (!CanEdit)
+            return false;
+        if (!Core.Catalog.AndroidKeys.IsName(key))
+        {
+            sequence.AddKeyError = key.Trim().Length == 0
+                ? "Pick a key or type its name."
+                : $"\"{key.Trim()}\" isn't an Android key name (like home, back, dpad_down).";
+            return false;
+        }
+        sequence.AddKeyError = null;
+        return SetKeys(sequence, [.. sequence.Keys.Select(k => k.Key), key]);
+    }
 
+    /// <summary>× on a key: the others keep their order.</summary>
     [RelayCommand]
-    private void AddDown(AndroidInputViewModel input) => SetMoves(input, [.. input.Moves.Select(m => m.Move), AndroidInputEdits.Down]);
+    private void RemoveKey(KeyToken key) =>
+        SetKeys(key.Sequence, [.. key.Sequence.Keys.Where(k => k.Index != key.Index).Select(k => k.Key)]);
 
-    /// <summary>× on a move: the others keep their order.</summary>
-    [RelayCommand]
-    private void RemoveMove(MoveToken move) =>
-        SetMoves(move.Input, [.. move.Input.Moves.Where(m => m.Index != move.Index).Select(m => m.Move)]);
+    /// <summary>Alt+Up / Alt+Down on a key's ×: it trades places with its neighbour.</summary>
+    public bool MoveKey(KeyToken key, int by)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        var keys = key.Sequence.Keys.Select(k => k.Key).ToList();
+        var to = key.Index + by;
+        if (to < 0 || to >= keys.Count)
+            return false;
+        (keys[key.Index], keys[to]) = (keys[to], keys[key.Index]);
+        return SetKeys(key.Sequence, keys);
+    }
 
-    private void SetMoves(AndroidInputViewModel input, IReadOnlyList<string> moves)
+    private bool SetKeys(AndroidSequenceViewModel sequence, IReadOnlyList<string> keys)
     {
         if (!CanEdit)
-            return;
-        if (AndroidInputEdits.SetMoves(_session.Current, input.DeviceKey, input.Name, moves).Refusal == InputEditRefusal.None)
-            _session.Update(c => AndroidInputEdits.SetMoves(c, input.DeviceKey, input.Name, moves).Config);
+            return false;
+        if (AndroidSequenceEdits.SetKeys(_session.Current, sequence.DeviceKey, sequence.Name, keys).Refusal != SequenceEditRefusal.None)
+            return false;
+        _session.Update(c => AndroidSequenceEdits.SetKeys(c, sequence.DeviceKey, sequence.Name, keys).Config);
+        return true;
     }
 
-    private static string? InputError(InputEditRefusal refusal, string name, string device) => refusal switch
+    private static string? SequenceError(SequenceEditRefusal refusal, string name, string device) => refusal switch
     {
-        InputEditRefusal.Empty => "Give it a name.",
-        InputEditRefusal.Taken => $"{device} already has an input called \"{name.Trim()}\".",
-        InputEditRefusal.Missing => "It isn't in your Library anymore.",
+        SequenceEditRefusal.Empty => "Give it a name.",
+        SequenceEditRefusal.Taken => $"{device} already has a sequence called \"{name.Trim()}\".",
+        SequenceEditRefusal.Missing => "It isn't in your Library anymore.",
         _ => null,
     };
 
     /// <summary>
-    /// The inspector's "Add inputs in the Library" link: the Android section, with this device's inputs open.
+    /// The inspector's "Add sequences in the Library" link: the Android section, with this device's sequences open.
     /// The shell shows the page.
     /// </summary>
-    public void RevealInputs(string deviceKey)
+    public void RevealSequences(string deviceKey)
     {
         var section = Section(LibraryKind.Android);
         SelectedIndex = Sections.ToList().IndexOf(section);
         foreach (var item in section.Items)
-            item.ShowInputs = item.Key == deviceKey || item.ShowInputs;
+            item.ShowSequences = item.Key == deviceKey || item.ShowSequences;
     }
 
     // ---- Add, capture, remove ----

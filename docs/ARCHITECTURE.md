@@ -671,7 +671,7 @@ T10.4 gate passed (2026-11-02, row above). T0.5 gate passed: no AOT/trim warning
   loaded the id), then removes the old one. `FlowsPageViewModel.Delete` / `UndoDelete` / `EndUndoAsync`: the removed
   flow and its index wait for Undo; the shortcut goes only when the bar ends (closing the editor waits for it).
 
-- Library leftovers: editing an Android device's inputs and an audio match in place; renaming audio and Bluetooth keys
+- Library leftovers: editing an audio match in place; renaming audio and Bluetooth keys
   (their cards show the device's name, not the key, D-046).
 - Inspector leftovers (M8): headers as key/value rows + "Add header" (now "Name: value" lines), a script's "Open in
   editor", the pill ring showing a test result for 3 s, resizing the pane (280–480), and recording a chord the

@@ -58,11 +58,11 @@ public sealed record DisplayLayout(string Key, ValueList<string> Monitors, strin
 }
 
 /// <summary>
-/// An Android device (Fire TV, Google TV, a phone) reached over adb (network debugging on). <paramref name="Address"/> as "192.168.1.50" or
-/// "192.168.1.50:5555"; <paramref name="Adb"/> is adb.exe's path, null = on PATH. Each input is the D-pad moves
-/// ("up"/"down") from where the TV's input list opens to that input.
+/// An Android device (a TV, a TV box, a phone) reached over adb (network debugging on). <paramref name="Address"/> as "192.168.1.50" or
+/// "192.168.1.50:5555"; <paramref name="Adb"/> is adb.exe's path, null = on PATH. Each sequence is a named list of
+/// Android key names (<see cref="Catalog.AndroidKeys"/>) that <c>android.input</c> sends in order (D-156).
 /// </summary>
-public sealed record AndroidDevice(string Key, string Address, ValueDictionary<ValueList<string>> Inputs, string? Adb = null)
+public sealed record AndroidDevice(string Key, string Address, ValueDictionary<ValueList<string>> Sequences, string? Adb = null)
 {
     /// <summary>adb's name for it, "host:port"; 5555 is the port Android's network debugging (adb's default) uses. Also its lock.</summary>
     public string Serial => SerialOf(Address);

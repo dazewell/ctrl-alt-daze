@@ -28,7 +28,7 @@ public class ProviderCatalogTests
         {
             ["audio.mute"] = "Mute or unmute", ["bluetooth.check"] = "Check connection", ["audio.check"] = "Check default device",
             ["process.check"] = "Check program", ["service.check"] = "Check service", ["file.check"] = "Check file", ["flag.check"] = "Check flag",
-            ["android.connect"] = "Connect", ["android.start"] = "Start app", ["android.input"] = "Choose input",
+            ["android.connect"] = "Connect", ["android.start"] = "Start app", ["android.input"] = "Play sequence",
             ["android.keys"] = "Send keys", ["android.sleep"] = "Sleep", ["flag.set"] = "Set flag", [ProviderCatalog.RunFlowId] = "Run flow",
             [ProviderCatalog.MenuShowId] = "Show menu", [ProviderCatalog.StopFlowId] = "Stop flow", ["notify"] = "Show message", ["http.request"] = "Send web request",
             ["process.close"] = "Close program", ["android.stop"] = "Stop app", ["display.screensOff"] = "Turn screens off",

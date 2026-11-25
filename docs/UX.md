@@ -13,8 +13,9 @@ Builds on OSD `SettingsWindow.xaml` (cards, InfoBar, HotkeyRecorder), `OsdWindow
   BreadcrumbBar "Flows › Connect Technics"; New flow: Blank / TV only / Audio → Headphones templates) ·
   **Library** (Pivot: Audio, Bluetooth, Bound devices, Displays, Android, Programs; settings cards with Test and "Used by 2
   flows", which lists the flows and opens one; layouts, Android, Bluetooth and bound devices Rename (layouts and Android: flows follow the new key; Bluetooth and bound: the shown name changes, the key stays); long names end in an ellipsis with the full text in a tooltip; a disabled Remove says why in its accessible name too (audio devices and programs have no Rename; programs have no Add by hand: they come from flows), a layout's
-  Details list its screens; an Android card's Inputs panel adds, renames (steps follow), removes (off while used) inputs
-  and edits each one's moves as Up/Down chips in order (D-078); Bound devices (D-116): "Bind devices" flyout (Bluetooth
+  Details list its screens; an Android card's Sequences panel adds, renames (steps follow), removes (off while used)
+  sequences and edits each one's keys as chips in send order (× removes, Alt+Up/Down moves; an editable key box + "Add key"),
+  and its Edit flyout changes the address and adb.exe path (D-078, D-156); Bound devices (D-116): "Bind devices" flyout (Bluetooth
   device, Audio device, Name), a card's Devices panel changes either side, Test checks both, and a Bluetooth or audio
   device that is a side can't be removed ("Part of Sony headphones. Remove that bound device first."); Audio, Bluetooth and
   Android: "Add by hand" flyout (D-123: Name + Bluetooth address / Network address, or audio "Name in Windows" + Direction;
@@ -226,8 +227,8 @@ changing anyway). The slot rule above is for standalone status and buttons, not 
   rows stay checked with #8. Send keys: token list in send order (× per token, Alt+Up/Down reorders) + an
   AutoSuggestBox "Add a key" (home, back, dpad_up/down/left/right/center, enter, menu, media_play_pause,
   media_next, media_previous, volume_up/down/mute, power, wakeup, sleep, settings, tv_input, media_play/pause/stop/fast_forward/rewind/skip_*/step_*/record/eject/close/top_menu/audio_track,
-  channel_up/down, captions, info, guide). Choose input: the
-  chosen device's inputs, none yet → hyperlink "Add inputs in the Library" (opens Library › Android with that device's inputs open, D-078). Code boxes: DropDownButton "Examples"
+  channel_up/down, captions, info, guide). Play sequence: the
+  chosen device's sequences, none yet → hyperlink "Add sequences in the Library" (opens Library › Android with that device's sequences open, D-078, D-156). Code boxes: DropDownButton "Examples"
   under the box; picking fills it (replaces, Ctrl+Z undoes). Examples — PowerShell: "Open a website"
   `Start-Process 'https://example.com'` · "Start an app and wait" `Start-Process notepad -Wait` · "Close an app"
   `Stop-Process -Name 'Spotify' -ErrorAction SilentlyContinue` · "Lock the PC" `rundll32.exe user32.dll,LockWorkStation`
