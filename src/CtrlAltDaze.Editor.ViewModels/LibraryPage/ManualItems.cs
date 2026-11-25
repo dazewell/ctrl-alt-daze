@@ -79,8 +79,9 @@ public static class ManualItems
         var serial = AndroidDevice.SerialOf(normal);
         if (library.Android.FirstOrDefault(d => d.Key != key && string.Equals(d.Serial, serial, StringComparison.OrdinalIgnoreCase)) is { } same)
             return (null, $"{same.Key} already has this address.");
-        if (adb.Length > 0 && (adb.IndexOfAny(Path.GetInvalidPathChars()) >= 0 || !adb.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)))
-            return (null, "adb's path is the full path of adb.exe, or empty when adb is on PATH.");
+        // Any path the file already held stays valid (the engine runs it as written); only a path Windows can't hold is refused.
+        if (adb.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+            return (null, "adb's path has characters a path can't have. Leave it empty when adb is on PATH.");
         var edited = device with { Address = normal, Adb = adb.Length == 0 ? null : adb };
         return (library with { Android = [.. library.Android.Select(d => d.Key == key ? edited : d)] }, null);
     }

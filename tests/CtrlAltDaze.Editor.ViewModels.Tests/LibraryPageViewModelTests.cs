@@ -630,8 +630,9 @@ public sealed class LibraryPageViewModelTests : IDisposable
 
         Assert.False(_page.EditAndroid(tv, "not an address", ""));
         Assert.Equal("\"not an address\" isn't a network address (like 192.168.1.50 or 192.168.1.50:5555).", tv.AddressError);
-        Assert.False(_page.EditAndroid(tv, "192.168.1.60", "adb"));
-        Assert.Equal("adb's path is the full path of adb.exe, or empty when adb is on PATH.", tv.AddressError);
+        Assert.False(_page.EditAndroid(tv, "192.168.1.60", "C:\tools\a|db.exe"));
+        Assert.Equal("adb's path has characters a path can't have. Leave it empty when adb is on PATH.", tv.AddressError);
+        Assert.True(_page.EditAndroid(tv, "192.168.1.50", "adb")); // a saved path without .exe still allows editing the address
 
         Assert.True(_page.EditAndroid(tv, " 192.168.1.60:5556 ", "\"C:\\tools\\adb.exe\""));
 

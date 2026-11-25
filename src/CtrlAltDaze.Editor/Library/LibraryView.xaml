@@ -359,7 +359,7 @@
                                                             </ItemsRepeater>
                                                             <StackPanel Grid.Row="2" Grid.ColumnSpan="3" Orientation="Horizontal" Spacing="4">
                                                                 <ComboBox IsEditable="True" ItemsSource="{x:Bind vml:AndroidSequenceViewModel.KeyChoices}" PlaceholderText="Key, like dpad_down"
-                                                                          MinWidth="200" IsEnabled="{x:Bind CanEdit, Mode=OneWay}" KeyDown="OnAddKeyKeyDown" Tag="{x:Bind}"
+                                                                          MinWidth="200" IsEnabled="{x:Bind CanEdit, Mode=OneWay}" PreviewKeyDown="OnAddKeyKeyDown" Tag="{x:Bind}"
                                                                           AutomationProperties.Name="{x:Bind AddKeyName}" />
                                                                 <Button Click="OnAddKey" Tag="{x:Bind}" IsEnabled="{x:Bind CanEdit, Mode=OneWay}"
                                                                         AutomationProperties.Name="{x:Bind AddKeyName}" ToolTipService.ToolTip="Add this key at the end">
