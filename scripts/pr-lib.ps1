@@ -209,10 +209,17 @@ function Get-BugHuntPathspec([string[]]$Path) {
 
 # $Diff: unified diff lines; $Files: changed paths. Returns @{ Score; Reasons[]; Level }.
 function Get-BugHuntRisk([string[]]$Diff, [string[]]$Files) {
+  # Signals are C#/XAML API names, so only those files' lines are scored (a script quoting them is not risk);
+  # every changed line still counts toward the big-diff bump.
   $changed = @($Diff | Where-Object { $_ -match '^[+-](?![+-]{2} )' })
+  $scored = [System.Collections.Generic.List[string]]::new(); $inCode = $true
+  foreach ($l in $Diff) {
+    if ($l -match '^\+\+\+ (?:b/)?(.+)$') { $inCode = $Matches[1] -match '\.(cs|xaml)$' }
+    elseif ($inCode -and $l -match '^[+-](?![+-]{2} )') { $scored.Add($l) }
+  }
   $score = 0; $reasons = [System.Collections.Generic.List[string]]::new()
   foreach ($name in $script:BugHuntSignals.Keys) {
-    $hits = @($changed | Where-Object { $_ -cmatch $script:BugHuntSignals[$name].pattern }).Count
+    $hits = @($scored | Where-Object { $_ -cmatch $script:BugHuntSignals[$name].pattern }).Count
     if ($hits) { $score += $script:BugHuntSignals[$name].weight; $reasons.Add("$name($hits)") }
   }
   $core = @($Files | Where-Object { $_ -match "/($script:BugHuntCoreFiles)\.cs$" }).Count

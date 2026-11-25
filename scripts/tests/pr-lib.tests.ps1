@@ -132,6 +132,8 @@ Check 'body starts with the marker' ($body -split "`n")[0] '<!-- bug-hunt head=a
 Check 'body says no findings' ($body -match 'No findings') $true
 $f = Format-BugHuntFinding ([pscustomobject]@{ severity = 'important'; confidence = 'plausible'; title = 'T'; scenario = 'S'; evidence = @('a.cs:1'); fix = 'F' })
 Check 'finding text' ($f -match '^\*\*Bug hunt · important · plausible\*\* — T' -and $f -match '`a.cs:1`') $true
+$r = Get-BugHuntRisk @('+++ b/scripts/x.ps1', "+  process = 'Process\.Start|Kill'", '+++ b/src/A.cs', '+ Thread.Sleep(1);') @('scripts/x.ps1', 'src/A.cs')
+Check 'only C#/XAML lines are scored' ($r.Reasons -join ',') 'idle(1)'
 Check 'pathspec excludes tests and docs' ((Get-BugHuntPathspec) -join ' ' -match 'tests/\*\*.*\*\.tests\.ps1') $true
 
 if ($script:fails) { Write-Host "$script:fails failed"; exit 1 } else { Write-Host 'all passed' }
