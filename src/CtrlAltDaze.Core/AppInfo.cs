@@ -7,4 +7,7 @@ public static class AppInfo
 
     /// <summary>Folder name under %APPDATA% / %LOCALAPPDATA%.</summary>
     public const string FolderName = "CtrlAltDaze";
+
+    /// <summary>Saved sign-ins a flow can use are generic credentials named <c>CtrlAltDaze:&lt;name&gt;</c> (D-031).</summary>
+    public const string CredentialPrefix = "CtrlAltDaze:";
 }

@@ -75,6 +75,9 @@ public sealed partial class ParamFieldViewModel : ObservableObject
     /// <summary>Press keys: the token list also has a box that records a chord as it is pressed (D-157).</summary>
     public bool RecordsKeys => IsTokenList && Spec.RecordsKeys;
 
+    /// <summary>Send Telegram message's bot: a "Set up Telegram" link opens the guide that fills bot and chat (D-158).</summary>
+    public bool SetsUpTelegram => Spec.SetsUpTelegram;
+
     public bool IsMultiline => !IsCallInputs && (Kind is ParamKind.MultilineText or ParamKind.TextMap || Kind is ParamKind.TextList && Spec.Suggest is null);
 
     public bool HasExamples => !IsCallInputs && Spec.Examples.Count > 0;

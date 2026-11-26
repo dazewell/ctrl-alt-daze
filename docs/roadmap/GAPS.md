@@ -104,7 +104,7 @@ subflows and the editor basics. It is **behind** on five things, in this order:
 | G-29 | Check that an address answers (host, port or web page) | PAD Ping, Home Assistant ping | Medium | S · Sonnet | Plan T24.8 |
 | G-30 | Remote start and publishing state (MQTT) | Home Assistant MQTT trigger, Keyboard Maestro Remote / Web Server / Public Web, IFTTT-class webhooks | Medium (High for smart-home users) | L · Opus | Needs your yes T28.11 |
 | G-31 | A web server in the engine for webhooks from the network | Keyboard Maestro Web Server, Hammerspoon `httpserver` | Medium | M | Rejected (§5) |
-| G-32 | Ready-made Telegram / Discord / ntfy steps | IFTTT-class tools | Medium | S each | Rejected as steps: gallery recipes over `http.request` (T27.1) |
+| G-32 | Ready-made Telegram / Discord / ntfy steps | IFTTT-class tools | Medium | S each | Rejected as steps: gallery recipes over `http.request` (T27.1); Telegram built as a step (D-158) |
 | G-33 | Lock, sleep, hibernate, shut down, restart, sign out | PAD Workstation, Task Scheduler, Stream Deck System, AHK `Shutdown` | High | S · Sonnet | Needs your yes T28.1 |
 | G-34 | Keep the PC awake (on / off / for a while) | PowerToys Awake, Hammerspoon `caffeinate` | Medium | S–M · Sonnet | Needs your yes T28.8 |
 | G-35 | Dark / light theme | PowerToys Light Switch, Shortcuts Appearance | Medium | S · Sonnet | Needs your yes T28.7 |

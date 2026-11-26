@@ -180,10 +180,30 @@ public sealed partial class ShellWindow : Window
         if (!ViewModel.Session.HasUnsavedChanges)
             return;
         args.Cancel = true;
+        // WinUI allows one ContentDialog at a time: a guide left open (Set up Telegram stays up for minutes) would make the
+        // save question below throw out of this async void handler (PR #278 review).
+        if (!_asking)
+            await CloseOpenDialogsAsync();
         if (await ConfirmLosingChangesAsync())
         {
             _closeAnyway = true;
             Close();
+        }
+    }
+
+    /// <summary>Hides any open ContentDialog (as its Cancel) and waits until it has closed, at most a second each.</summary>
+    private async Task CloseOpenDialogsAsync()
+    {
+        if (Content?.XamlRoot is not { } root)
+            return;
+        foreach (var popup in VisualTreeHelper.GetOpenPopupsForXamlRoot(root))
+        {
+            if (popup.Child is not ContentDialog dialog)
+                continue;
+            var closed = new TaskCompletionSource();
+            dialog.Closed += (_, _) => closed.TrySetResult();
+            dialog.Hide();
+            await Task.WhenAny(closed.Task, Task.Delay(TimeSpan.FromSeconds(1)));
         }
     }
 

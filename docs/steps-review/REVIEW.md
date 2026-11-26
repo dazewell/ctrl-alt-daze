@@ -128,7 +128,7 @@ Priority H/M/L = how likely the user's flows need it. Effort S ≤ 1 PR small, M
 | Files | File actions (copy, move, delete, write text, create folder) | L | M | Dup of PowerShell/`cmd`; invites a file manager; not in GOALS | No |
 | Web | **Wake on LAN** (UDP magic packet to a MAC) | M | S | no admin, no dependency; fits "start the PC/TV" flows; group name "Web" is then a poor fit (rename to "Network" is label-only) | **Later** (ask) |
 | Web | Check a web address answers (health check, e.g. Sunshine up) | L | S | read-only check family member, reuses the HTTP code | Later |
-| Web | Webhook helpers, Discord/Telegram steps | – | – | `http.request` already does it; scope creep | No |
+| Web | Webhook helpers, Discord/Telegram steps | – | – | `http.request` already does it; scope creep | No; Telegram built as `telegram.send` (D-158: its key is in the address) |
 | Message | Message options (title, how long, sound); clipboard | L | S | the pop-up duration is a global setting | No |
 | Flags | Toggle flag, clear all flags | L | S | flags are in memory only (D-029); toggles are not repeatable | No |
 | Flows | **Stop flow** (cancel a named running flow, or end this one quietly) — needed for "check failed, stop here" and for restarting a looped flow | L | S–M | engine `cancel` exists; `StepEndsFlowException` exists | **Later** (ask) |

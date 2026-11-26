@@ -94,6 +94,7 @@ public static class BuiltInProviders
             new ProcessCloseProvider(new WindowsCloseTargets(), time),
             new PowerShellProvider(),
             new HttpRequestProvider(new WindowsCredentials()),
+            new TelegramSendProvider(new WindowsCredentials()),
             new AudioSetDefaultProvider(audio),
             new AudioSetVolumeProvider(audio),
             new AudioMuteProvider(audio),

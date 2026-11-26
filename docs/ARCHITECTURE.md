@@ -294,7 +294,8 @@ D-043. `scripts/pack.ps1` → one folder (editor self-contained + AOT `CtrlAltDa
   `DazeControl.Tray`, wait on its mutex ≤ 10 s), then `Core/OldSetup.CopyFolders` copies `%APPDATA%` and
   `%LOCALAPPDATA%\DazeControl` (only while the new config.yaml is absent; existing files stay; config last, via a temp file; never
   throws). The editor and `cad` call the copy first too (not with `--config`). `WindowsCredentials` reads
-  `CtrlAltDaze:<name>`, then `DazeControl:<name>`, and lists both. Installed copy only: `Autostart.CarryFrom` removes
+  `CtrlAltDaze:<name>`, then `DazeControl:<name>`, and lists both. The editor writes one only from "Set up Telegram"
+  (`Editor/Inspector/SavedKeys`, D-158). Installed copy only: `Autostart.CarryFrom` removes
   the old Run value (inside `DazeControlApp` only) and turns ours on if it was on; `ShortcutPlaces.OldTargets` makes
   the start's icon repair re-point the old app's desktop shortcuts at our stub; after a repair without error the
   engine starts the old `DazeControlApp\Update.exe uninstall --silent` (not awaited; again next start while it exists).

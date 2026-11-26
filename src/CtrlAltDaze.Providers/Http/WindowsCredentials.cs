@@ -11,7 +11,7 @@ namespace CtrlAltDaze.Providers.Http;
 /// </summary>
 public sealed unsafe partial class WindowsCredentials : ICredentialStore
 {
-    public const string TargetPrefix = "CtrlAltDaze:";
+    public const string TargetPrefix = Core.AppInfo.CredentialPrefix;
 
     /// <summary>Also finds a sign-in saved under the old name (T29.2, D-152); nothing is copied.</summary>
     public Credential? Read(string name) =>
