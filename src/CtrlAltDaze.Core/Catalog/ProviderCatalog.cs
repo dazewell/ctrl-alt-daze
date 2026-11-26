@@ -8,11 +8,13 @@ namespace CtrlAltDaze.Core.Catalog;
 public static class ProviderCatalog
 {
     private const string Audio = "E767", Bluetooth = "E702", Display = "E7F4", Process = "E756", Script = "E943",
-        Http = "E774", Tv = "E8B2", Service = "E912", Wait = "E823", Message = "E8BD", Flag = "E7C1", File = "E8A5", RunFlow = "E768", MenuGlyph = "E700", AskGlyph = "E897", PickGlyph = "E8FD",
+        Http = "E774", TelegramGlyph = "E724",Tv = "E8B2", Service = "E912", Wait = "E823", Message = "E8BD", Flag = "E7C1", File = "E8A5", RunFlow = "E768", MenuGlyph = "E700", AskGlyph = "E897", PickGlyph = "E8FD",
         Network = "E701", Power = "E83F", Pc = "E7F8", Clock = "E787", Drive = "EDA2", TextGlyph = "E8D2", StopGlyph = "E71A";
 
     /// <summary>The fact id of <c>BluetoothConnectedProbe</c> (D-081).</summary>
     public const string BluetoothConnected = "bluetooth.connected";
+
+    public const string TelegramSendId = "telegram.send";
 
     private static readonly TimeSpan Short = TimeSpan.FromSeconds(10);
 
@@ -233,6 +235,27 @@ public static class ProviderCatalog
                 new ValueSpec("body", ValueKind.Text, "Response") { Sensitive = true, Help = "What the server sent back (the first 1,000 characters, or 64 KB when a Get from text reads it). Only read when a later step uses it" },
             ],
         },
+        // D-158: a Telegram bot's key stays in Credential Manager; the editor's "Set up Telegram" fills bot and chat.
+        new(TelegramSendId, "Send Telegram message", TelegramGlyph, Short,
+        [
+            new("bot", ParamKind.Text, "Bot")
+            {
+                Required = true, SetsUpTelegram = true, Suggest = ParamSuggest.Devices("credentials"),
+                Help = "The saved name of your bot's key; Set up Telegram makes it. The key stays in Windows Credential Manager.",
+            },
+            new("chat", ParamKind.Text, "Chat")
+            {
+                Required = true,
+                Help = "Set up Telegram fills it in: your chat's or group's number, or a channel's @name.",
+            },
+            new("text", ParamKind.MultilineText, "Message")
+            {
+                Required = true, TakesValues = true,
+                Examples = [new("Flow finished", "{@flow} finished at {@time}"), new("What started it", "{@flow} started by {@trigger}")],
+            },
+            new("silent", ParamKind.Boolean, "Send silently") { Default = "false", Help = "It arrives without a sound." },
+        ])
+        { Keywords = "telegram chat phone message notify bot" },
         // Android order (REVIEW F6): connect, apps, sequence and keys, media and sound, screen, wake/sleep.
         new("android.connect", "Connect", Tv, TimeSpan.FromSeconds(20),
             [Ref("device", "Android device", LibraryKind.Android)])

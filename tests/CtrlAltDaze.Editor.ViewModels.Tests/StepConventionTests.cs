@@ -22,7 +22,7 @@ public class StepConventionTests
             Assert.Contains(words[0], Verbs);
             Assert.DoesNotContain(words.Skip(1), w => w is "a" or "an" or "the");
             // Sentence case: only the first word and proper names (PowerShell, Android, Bluetooth) have capitals.
-            Assert.All(words.Skip(1), w => Assert.True(!char.IsUpper(w[0]) || w is "PowerShell" or "Android" or "Bluetooth" or "Wi-Fi" or "VPN", $"{d.Id}: \"{d.Title}\""));
+            Assert.All(words.Skip(1), w => Assert.True(!char.IsUpper(w[0]) || w is "PowerShell" or "Android" or "Bluetooth" or "Wi-Fi" or "VPN" or "Telegram", $"{d.Id}: \"{d.Title}\""));
         }
     }
 

@@ -124,6 +124,9 @@ public sealed record ParamSpec(string Name, ParamKind Kind, string Title)
     /// <summary>An ordered list of <see cref="Input.KeyChord"/>s (<c>pc.keys</c>): the inspector also records a chord as it is pressed (D-157).</summary>
     public bool RecordsKeys { get; init; }
 
+    /// <summary>A Telegram bot's saved key name (<c>telegram.send</c>): the inspector offers the "Set up Telegram" guide (D-158).</summary>
+    public bool SetsUpTelegram { get; init; }
+
     /// <summary>Values that show how to fill a free-text param; the inspector's "Examples" menu.</summary>
     public ValueList<ParamExample> Examples { get; init; } = [];
 
