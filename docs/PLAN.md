@@ -939,6 +939,7 @@ A yes becomes a superseding D-entry in that row's PR. Reasons for and against: G
 - [ ] T28.9 Monitor brightness and input over DDC/CI (Opus, M; spike first). REVIEW §3 had brightness as "spike, low".
 - [ ] T28.10 Flags that survive a restart (Sonnet, S). D-029's revisit note.
 - [ ] T28.11 MQTT: remote start, publish, state (Opus, L; spike on idle = zero first). New; the only resident network connection.
+- [x] T28.13 Send Telegram message: built as `telegram.send` with the editor's "Set up Telegram" guide (D-158; branch claude/telegram-messaging-feature-d11008). User asked 2026-11-25. Reverses G-32 / REVIEW §3 for Telegram.
 - [ ] T28.12 Signed installer, then winget (yours: cost and an identity check; the workflow change is Sonnet, S).
 
 ## M29 Rename to Ctrl Alt Daze (user, 2026-11-13; D-152). Planned only: the user starts the work separately

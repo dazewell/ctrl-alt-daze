@@ -77,7 +77,7 @@ internal sealed class TelegramSetupDialog : IDisposable
         content.Children.Add(Heading("1 · Make your bot"));
         content.Children.Add(Note("Open BotFather, send /newbot, give it any name, then a user name that ends in bot (like daze_pc_bot). "
             + "BotFather answers with a key. Paste it here."));
-        content.Children.Add(new HyperlinkButton { Content = "Open BotFather", NavigateUri = new Uri(TelegramApi.BotFatherUrl), Padding = new Thickness(0) });
+        content.Children.Add(new HyperlinkButton { Content = "Open BotFather", NavigateUri = new Uri(TelegramApi.BotFatherUrl) });
         content.Children.Add(_key);
         content.Children.Add(_check);
         content.Children.Add(_keyStatus);
