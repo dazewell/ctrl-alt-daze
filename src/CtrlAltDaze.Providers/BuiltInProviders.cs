@@ -98,6 +98,7 @@ public static class BuiltInProviders
             new AudioSetVolumeProvider(audio),
             new AudioMuteProvider(audio),
             new AudioMediaProvider(new WindowsMediaCommands()),
+            new PcKeysProvider(new WindowsKeyboard(), time),
             new BluetoothConnectProvider(bluetooth),
             new BluetoothDisconnectProvider(bluetooth),
             new BluetoothCheckProvider(new BluetoothConnectedProbe(new SystemBluetoothState(new CfgMgrPairedBluetooth()))),

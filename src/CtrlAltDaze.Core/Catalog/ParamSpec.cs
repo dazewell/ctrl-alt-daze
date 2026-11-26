@@ -121,6 +121,9 @@ public sealed record ParamSpec(string Name, ParamKind Kind, string Title)
     /// <summary>A <see cref="ParamKind.TextList"/> whose order matters (keys sent in order): a token list, not a checklist.</summary>
     public bool Ordered { get; init; }
 
+    /// <summary>An ordered list of <see cref="Input.KeyChord"/>s (<c>pc.keys</c>): the inspector also records a chord as it is pressed (D-157).</summary>
+    public bool RecordsKeys { get; init; }
+
     /// <summary>Values that show how to fill a free-text param; the inspector's "Examples" menu.</summary>
     public ValueList<ParamExample> Examples { get; init; } = [];
 

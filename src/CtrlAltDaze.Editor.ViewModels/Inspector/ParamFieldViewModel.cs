@@ -72,6 +72,9 @@ public sealed partial class ParamFieldViewModel : ObservableObject
     /// <summary>An ordered list picked from a table (Android keys): tokens in send order plus an add box.</summary>
     public bool IsTokenList => Kind is ParamKind.TextList && Spec.Suggest is not null && Spec.Ordered && !IsFlowList;
 
+    /// <summary>Press keys: the token list also has a box that records a chord as it is pressed (D-157).</summary>
+    public bool RecordsKeys => IsTokenList && Spec.RecordsKeys;
+
     public bool IsMultiline => !IsCallInputs && (Kind is ParamKind.MultilineText or ParamKind.TextMap || Kind is ParamKind.TextList && Spec.Suggest is null);
 
     public bool HasExamples => !IsCallInputs && Spec.Examples.Count > 0;

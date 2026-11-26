@@ -33,6 +33,7 @@ public sealed partial class HotkeyRecorder : UserControl
     private bool _recording; // started by the user (click, Enter or Space), ended by Esc, a recorded chord or leaving the box
     private bool _recorded;  // since recording began: show the stored value, not the prompt, once keys are up
     private bool _chordPending; // Win, Ctrl or Alt went down and no other key came yet (H7)
+    private DeactivationWatch? _watch; // a chord Windows keeps (Alt+Tab) leaves the editor without leaving the box
 
     public HotkeyRecorder()
     {
@@ -171,6 +172,7 @@ public sealed partial class HotkeyRecorder : UserControl
         _recording = true;
         _recorded = false;
         _chordPending = false;
+        _watch = DeactivationWatch.Start(StopRecording);
         RecordingChanged?.Invoke(this, true);
         Box.Focus(FocusState.Pointer);
         Box.Text = RecordingPrompt;
@@ -182,6 +184,8 @@ public sealed partial class HotkeyRecorder : UserControl
         _recording = false;
         _recorded = false;
         _chordPending = false;
+        _watch?.Dispose();
+        _watch = null;
         Box.Text = Hotkey;
         if (was)
             RecordingChanged?.Invoke(this, false);

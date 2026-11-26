@@ -53,6 +53,7 @@ public static partial class ConfigValidator
         CheckOpens(config.Flows, problems);
         CheckValues(config.Flows, problems);
         CheckWakes(config.Flows, problems);
+        CheckKeys(config.Flows, problems);
         CheckExtracts(config.Flows, problems);
         CheckReaches(config.Flows, problems);
         CheckCalls(config.Flows, problems);
@@ -357,6 +358,49 @@ public static partial class ConfigValidator
                 if (!MacAddress.TryParse(text, out _))
                     problems.Add(new(Severity.Error, $"flows.{flow.Id}.nodes.{step.Id}.with.mac",
                         "That isn't a hardware address. Use six pairs of digits, like aa:bb:cc:dd:ee:ff.", flow.Id));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Press keys (D-157): a key it can't read is an error. A key that is an enabled flow's shortcut is a warning: Windows
+    /// treats a pressed key like a typed one, so it starts that flow (or this one again).
+    /// </summary>
+    private static void CheckKeys(IReadOnlyList<Flow> flows, List<Problem> problems)
+    {
+        var shortcuts = new Dictionary<Hotkey, string>();
+        foreach (var flow in flows.Where(f => f.Enabled))
+        {
+            foreach (var text in flow.Hotkeys)
+            {
+                if (Hotkey.TryParse(text, out var hotkey))
+                    shortcuts.TryAdd(hotkey, flow.Id);
+            }
+        }
+        foreach (var flow in flows)
+        {
+            foreach (var step in flow.Nodes.OfType<StepNode>().Where(s => s.Step == "pc.keys"))
+            {
+                if (!step.With.TryGetValue("keys", out var setting))
+                    continue;
+                var items = setting switch
+                {
+                    ListParam list => list.Items,
+                    ScalarParam scalar => [scalar],
+                    _ => [],
+                };
+                for (var i = 0; i < items.Count; i++)
+                {
+                    if (items[i] is not ScalarParam { Text: var text })
+                        continue;
+                    var path = $"flows.{flow.Id}.nodes.{step.Id}.with.keys";
+                    if (!KeyChord.TryParse(text, out var chord))
+                        problems.Add(new(Severity.Error, path, $"\"{text.Trim()}\" isn't a key to press. Write it like Ctrl+Shift+M, F11 or Enter.", flow.Id));
+                    else if (chord.AsHotkey() is { } hotkey && shortcuts.TryGetValue(hotkey, out var owner))
+                        problems.Add(new(Severity.Warning, path,
+                            owner == flow.Id ? $"{hotkey} is this flow's own shortcut: pressing it starts this flow again."
+                                : $"{hotkey} is the shortcut of flow \"{owner}\": pressing it starts that flow.", flow.Id));
+                }
             }
         }
     }
