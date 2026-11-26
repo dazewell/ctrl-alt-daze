@@ -130,7 +130,7 @@ public sealed partial class WindowsKeyboard : IKeyboard
     private const string EditorProcess = "CtrlAltDaze.Editor";
 
     private const int GwHwndNext = 2, GwOwner = 4, GwlExStyle = -20, DwmCloaked = 14;
-    private const long ToolWindow = 0x80;
+    private const long ToolWindow = 0x80, Topmost = 0x8;
 
     public KeyTarget? Front()
     {
@@ -154,10 +154,13 @@ public sealed partial class WindowsKeyboard : IKeyboard
         target.ProcessId == Environment.ProcessId || string.Equals(target.Program, EditorProcess, StringComparison.OrdinalIgnoreCase)
         || ClassName(target.Window) is "Shell_TrayWnd" or "Shell_SecondaryTrayWnd";
 
-    /// <summary>A window on the taskbar: visible, not minimised, not owned, not a tool window, not cloaked (another desktop, a suspended app).</summary>
+    /// <summary>
+    /// A window on the taskbar: visible, not minimised, not owned, not a tool window, not cloaked (another desktop, a suspended
+    /// app), and not always on top: a pinned window (Task Manager, a video) sits above the app the user was in.
+    /// </summary>
     private static bool IsAppWindow(nint window) =>
         IsWindowVisible(window) && !IsIconic(window) && GetWindow(window, GwOwner) == 0
-        && (GetWindowLongPtrW(window, GwlExStyle) & ToolWindow) == 0
+        && (GetWindowLongPtrW(window, GwlExStyle) & (ToolWindow | Topmost)) == 0
         && !(DwmGetWindowAttribute(window, DwmCloaked, out var cloaked, sizeof(int)) == 0 && cloaked != 0);
 
     private static string ClassName(nint window)

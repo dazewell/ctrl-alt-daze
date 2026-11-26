@@ -19,7 +19,8 @@ public sealed partial class KeyChordRecorder : UserControl
     private const string Prompt = "Press the keys";
 
     private bool _recording;
-    private bool _chordPending; // Win, Ctrl or Alt went down and no other key came yet
+    private HotkeyModifiers _seen; // modifiers that went down since all keys were last up, with no other key yet
+    private DeactivationWatch? _watch;
 
     public KeyChordRecorder()
     {
@@ -48,18 +49,13 @@ public sealed partial class KeyChordRecorder : UserControl
         var modifiers = HeldModifiers();
         if (IsModifier(e.Key))
         {
-            _chordPending |= (modifiers & ~HotkeyModifiers.Shift) != HotkeyModifiers.None;
+            _seen |= modifiers;
             Box.Text = Hotkey.Prefix(modifiers);
             return;
         }
-        _chordPending = false;
+        _seen = HotkeyModifiers.None;
         if (KeyChord.TryCreate(modifiers, (uint)e.Key, out var chord))
-        {
-            Stop();
-            ShowNote(null);
-            Recorded?.Invoke(this, chord.ToString());
-            Announce("Added " + chord);
-        }
+            Add(chord);
         else
         {
             ShowNote("That key can't be pressed by a flow. Type it in the box above if it has a name.");
@@ -73,13 +69,24 @@ public sealed partial class KeyChordRecorder : UserControl
         e.Handled = true;
         if (HeldModifiers() != HotkeyModifiers.None)
             return;
-        if (_chordPending)
-        {
-            // Win/Ctrl/Alt went down and up with no key reaching us: Windows or another app kept that chord.
-            _chordPending = false;
-            ShowNote("Windows or another app kept that shortcut, so it can't be recorded. Type it in the box above.");
-        }
+        var seen = _seen;
+        _seen = HotkeyModifiers.None;
         Box.Text = Prompt;
+        // One of Ctrl, Alt or Shift pressed and let go alone is that key. Win alone, or several modifiers, most likely lost
+        // their key to Windows or another app's shortcut (Win+D, a Ctrl+Alt+X of another tool): say so instead of guessing.
+        if (seen is HotkeyModifiers.Ctrl or HotkeyModifiers.Alt or HotkeyModifiers.Shift
+            && KeyChord.TryCreate(HotkeyModifiers.None, KeyChord.ModifierKeys.Single(m => m.Flag == seen).Key, out var alone))
+            Add(alone);
+        else if ((seen & ~HotkeyModifiers.Shift) != HotkeyModifiers.None)
+            ShowNote("Windows or another app kept that shortcut, so it can't be recorded. Type it in the box above.");
+    }
+
+    private void Add(KeyChord chord)
+    {
+        Stop();
+        ShowNote(null);
+        Recorded?.Invoke(this, chord.ToString());
+        Announce("Added " + chord);
     }
 
     private void OnLostFocus(object sender, RoutedEventArgs e) => Stop();
@@ -89,7 +96,8 @@ public sealed partial class KeyChordRecorder : UserControl
         if (_recording)
             return;
         _recording = true;
-        _chordPending = false;
+        _seen = HotkeyModifiers.None;
+        _watch = DeactivationWatch.Start(Stop);
         ShowNote(null);
         RecordingChanged?.Invoke(this, true);
         Box.Focus(FocusState.Pointer);
@@ -100,7 +108,9 @@ public sealed partial class KeyChordRecorder : UserControl
     {
         var was = _recording;
         _recording = false;
-        _chordPending = false;
+        _seen = HotkeyModifiers.None;
+        _watch?.Dispose();
+        _watch = null;
         Box.Text = "";
         if (was)
             RecordingChanged?.Invoke(this, false);

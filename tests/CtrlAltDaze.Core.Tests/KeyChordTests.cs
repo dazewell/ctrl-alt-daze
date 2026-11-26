@@ -74,6 +74,8 @@ public class KeyChordTests
     [InlineData(HotkeyModifiers.None, 0x09u, "Tab")]
     [InlineData(HotkeyModifiers.Alt, 0x73u, "Alt+F4")]
     [InlineData(HotkeyModifiers.Win, 0x25u, "Win+Left")]
+    [InlineData(HotkeyModifiers.None, 0xA2u, "Ctrl")]
+    [InlineData(HotkeyModifiers.None, 0xA0u, "Shift")]
     public void TheRecorderTurnsPressedKeysIntoAChord(HotkeyModifiers modifiers, uint key, string text)
     {
         Assert.True(KeyChord.TryCreate(modifiers, key, out var chord));
