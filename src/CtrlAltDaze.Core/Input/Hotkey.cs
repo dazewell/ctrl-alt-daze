@@ -54,7 +54,7 @@ public sealed record Hotkey(HotkeyModifiers Modifiers, uint Key)
         (0x6F, '/', ["DIVIDE", "SLASH"]),
     ];
 
-    private static readonly (string Name, HotkeyModifiers Flag)[] ModifierNames =
+    internal static readonly (string Name, HotkeyModifiers Flag)[] ModifierNames =
     [
         ("Win", HotkeyModifiers.Win),
         ("Ctrl", HotkeyModifiers.Ctrl),
@@ -73,42 +73,53 @@ public sealed record Hotkey(HotkeyModifiers Modifiers, uint Key)
     public static bool TryParse(string? text, [NotNullWhen(true)] out Hotkey? hotkey)
     {
         hotkey = null;
-        if (string.IsNullOrWhiteSpace(text))
+        if (SplitChord(text) is not { } parts)
             return false;
+        return ParseModifiers(parts) is { } modifiers && KeyCode(parts[^1]) is { } key && TryCreate(modifiers, key, out hotkey);
+    }
+
+    /// <summary>"Win+Alt+A" → ["Win", "Alt", "A"]; a trailing '+' right after "Num" is the pad's plus key. Null when nothing is written.</summary>
+    internal static string[]? SplitChord(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return null;
         text = text.Trim();
-        string[] parts;
-        if (text.EndsWith('+'))
-        {
-            // "Num+" and "Win+Num++": a trailing '+' is the pad's plus key when "Num"/"Numpad" comes right before it.
-            var body = text[..^1].TrimEnd();
-            if (body.EndsWith('+'))
-                body = body[..^1].TrimEnd();
-            parts = body.Split('+', StringSplitOptions.TrimEntries);
-            if (parts[^1].ToUpperInvariant() is not ("NUM" or "NUMPAD"))
-                return false;
-            parts[^1] = "Num+";
-        }
-        else
-        {
-            parts = text.Split('+', StringSplitOptions.TrimEntries);
-        }
+        if (!text.EndsWith('+'))
+            return text.Split('+', StringSplitOptions.TrimEntries);
+        // "Num+" and "Win+Num++": a trailing '+' is the pad's plus key when "Num"/"Numpad" comes right before it.
+        var body = text[..^1].TrimEnd();
+        if (body.EndsWith('+'))
+            body = body[..^1].TrimEnd();
+        var parts = body.Split('+', StringSplitOptions.TrimEntries);
+        if (parts[^1].ToUpperInvariant() is not ("NUM" or "NUMPAD"))
+            return null;
+        parts[^1] = "Num+";
+        return parts;
+    }
+
+    /// <summary>The modifiers before the last part of <paramref name="parts"/>; null when one is unknown or written twice.</summary>
+    internal static HotkeyModifiers? ParseModifiers(string[] parts)
+    {
         var modifiers = HotkeyModifiers.None;
         foreach (var part in parts[..^1])
         {
-            var flag = part.ToUpperInvariant() switch
-            {
-                "WIN" or "WINDOWS" => HotkeyModifiers.Win,
-                "CTRL" or "CONTROL" => HotkeyModifiers.Ctrl,
-                "ALT" => HotkeyModifiers.Alt,
-                "SHIFT" => HotkeyModifiers.Shift,
-                _ => HotkeyModifiers.None,
-            };
+            var flag = ModifierFlag(part);
             if (flag == HotkeyModifiers.None || modifiers.HasFlag(flag))
-                return false;
+                return null;
             modifiers |= flag;
         }
-        return KeyCode(parts[^1]) is { } key && TryCreate(modifiers, key, out hotkey);
+        return modifiers;
     }
+
+    /// <summary>"Win", "Windows", "Ctrl", "Control", "Alt" or "Shift" in any case; <see cref="HotkeyModifiers.None"/> otherwise.</summary>
+    internal static HotkeyModifiers ModifierFlag(string name) => name.ToUpperInvariant() switch
+    {
+        "WIN" or "WINDOWS" => HotkeyModifiers.Win,
+        "CTRL" or "CONTROL" => HotkeyModifiers.Ctrl,
+        "ALT" => HotkeyModifiers.Alt,
+        "SHIFT" => HotkeyModifiers.Shift,
+        _ => HotkeyModifiers.None,
+    };
 
     /// <summary>From keys pressed in the editor: false unless <paramref name="key"/> and the modifiers make a valid hotkey.</summary>
     public static bool TryCreate(HotkeyModifiers modifiers, uint key, [NotNullWhen(true)] out Hotkey? hotkey)
@@ -140,7 +151,8 @@ public sealed record Hotkey(HotkeyModifiers Modifiers, uint Key)
     public static string Prefix(HotkeyModifiers modifiers) =>
         string.Concat(ModifierNames.Where(m => modifiers.HasFlag(m.Flag)).Select(m => m.Name + "+"));
 
-    private static uint? KeyCode(string name)
+    /// <summary>A shortcut key's virtual-key code from its name (A, 7, F11, [, Num1, Num+), or null.</summary>
+    internal static uint? KeyCode(string name)
     {
         name = name.ToUpperInvariant();
         if (name.Length == 1 && (char.IsAsciiLetterUpper(name[0]) || char.IsAsciiDigit(name[0])))
@@ -169,13 +181,16 @@ public sealed record Hotkey(HotkeyModifiers Modifiers, uint Key)
     }
 
     /// <summary>The key's own name, as written after the last "+": "A", "F11", "[", "Num1".</summary>
-    public string KeyName => Key switch
+    public string KeyName => NameOf(Key);
+
+    /// <summary>The name of a key <see cref="KeyCode"/> reads.</summary>
+    internal static string NameOf(uint key) => key switch
     {
-        >= 0x70 and <= 0x87 => "F" + (Key - 0x70 + 1),
-        >= NumPad0 and <= NumPad9 => "Num" + (Key - NumPad0),
-        _ when Array.FindIndex(PadOperators, o => o.Key == Key) is >= 0 and var j => "Num" + PadOperators[j].Symbol,
-        _ when Array.FindIndex(Punctuation, p => p.Key == Key) is >= 0 and var i => Punctuation[i].Name.ToString(),
-        _ => ((char)Key).ToString(),
+        >= 0x70 and <= 0x87 => "F" + (key - 0x70 + 1),
+        >= NumPad0 and <= NumPad9 => "Num" + (key - NumPad0),
+        _ when Array.FindIndex(PadOperators, o => o.Key == key) is >= 0 and var j => "Num" + PadOperators[j].Symbol,
+        _ when Array.FindIndex(Punctuation, p => p.Key == key) is >= 0 and var i => Punctuation[i].Name.ToString(),
+        _ => ((char)key).ToString(),
     };
 
     /// <summary>Canonical form, modifiers in Windows' order: "Win+Ctrl+Alt+Shift+A".</summary>

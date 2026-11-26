@@ -443,6 +443,19 @@ public static class ProviderCatalog
                 new ValueSpec("status", ValueKind.Number, "Status code") { OnFailure = true, Help = "The number a web address answered with (200 = fine)" },
             ],
         },
+        new("pc.keys", "Press keys", Pc, Short,
+        [
+            new("keys", ParamKind.TextList, "Keys")
+            {
+                Required = true, Ordered = true, Suggest = ParamSuggest.Static("pcKeys", Input.KeyChord.Examples),
+                Help = "Pressed in order, like Ctrl+Shift+M, F11 or Enter. Alt+Up or Alt+Down on a key's × moves it.",
+            },
+            new("program", ParamKind.Text, "Send to")
+            {
+                Help = "Empty = the app in front. A program's name, like Teams or Teams.exe, brings its window to the front first.",
+            },
+        ])
+        { Resources = ["keyboard"], Keywords = "hotkey shortcut keyboard keystroke send press key chord type app window" },
         new("power.source", "Check power", Power, Short,
         [
             new("is", ParamKind.Choice, "Is") { Choices = ["pluggedIn", "onBattery"], Captions = ["Plugged in", "On battery"], Default = "pluggedIn", Help = WaitUntilHelp },
