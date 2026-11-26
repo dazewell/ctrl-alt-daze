@@ -6,7 +6,8 @@ namespace CtrlAltDaze.Core.Tests;
 
 public sealed class TelegramApiTests
 {
-    private const string Key = "123456789:AAEhBOweik6ad9r_QXMENQjcrGbqCr4K-ra";
+    // Made up at run time: a token-shaped literal in source trips secret scanning (alert #1, 2026-11-26).
+    private static readonly string Key = string.Concat("123456789", ":", new string('x', 35));
 
     private sealed class FakeHandler(HttpStatusCode status, string answer) : HttpMessageHandler
     {
@@ -29,11 +30,11 @@ public sealed class TelegramApiTests
     }
 
     [Theory]
-    [InlineData(Key, true)]
-    [InlineData("123:short", false)]
-    [InlineData("bot123456789:AAEhBOweik6ad9r_QXMENQjcrGbqCr4K-ra", false)]
-    [InlineData(" " + Key, false)]
-    public void KeysHaveBotFathersShape(string key, bool ok) => Assert.Equal(ok, TelegramApi.LooksLikeKey(key));
+    [InlineData("123456789:", true)]
+    [InlineData("12:", false)]
+    [InlineData("bot123456789:", false)]
+    [InlineData(" 123456789:", false)]
+    public void KeysHaveBotFathersShape(string start, bool ok) => Assert.Equal(ok, TelegramApi.LooksLikeKey(start + new string('x', 35)));
 
     [Theory]
     [InlineData("123456789", true)]
@@ -106,7 +107,7 @@ public sealed class TelegramApiTests
         using var http = new HttpClient(handler);
         var e = await Assert.ThrowsAsync<TelegramException>(() => new TelegramApi(http).SendAsync(Key, "42", "hi", false, TestContext.Current.CancellationToken));
         Assert.Contains(expected, e.Message, StringComparison.Ordinal);
-        Assert.DoesNotContain("AAEh", e.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("xxxxxxxx", e.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -114,7 +115,7 @@ public sealed class TelegramApiTests
     {
         using var http = new HttpClient(new FailingHandler());
         var e = await Assert.ThrowsAsync<TelegramException>(() => new TelegramApi(http).BotNameAsync(Key, TestContext.Current.CancellationToken));
-        Assert.DoesNotContain("AAEh", e.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("xxxxxxxx", e.Message, StringComparison.Ordinal);
     }
 
     [Fact]
