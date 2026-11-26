@@ -148,6 +148,8 @@
                                     </ItemsControl>
                                     <AutoSuggestBox PlaceholderText="Add a key" Tag="{x:Bind}" TextChanged="OnKeyTextChanged" UpdateTextOnSelect="False"
                                                     QuerySubmitted="OnKeySubmitted" GotFocus="OnKeyBoxFocused" AutomationProperties.Name="Add a key" />
+                                    <!-- Press keys: or record the chord by pressing it (D-157). -->
+                                    <local:KeyChordRecorder Visibility="{x:Bind RecordsKeys}" Tag="{x:Bind}" Recorded="OnKeyRecorded" RecordingChanged="OnShortcutRecording" />
                                 </StackPanel>
                                 <!-- menu.show: the flows of the menu in menu order (DESIGN 3.7); Alt+Up/Down on a remove button moves it. -->
                                 <StackPanel Visibility="{x:Bind IsFlowList}" Spacing="4">

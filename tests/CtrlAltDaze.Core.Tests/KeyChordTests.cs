@@ -68,6 +68,24 @@ public class KeyChordTests
         Assert.Null(enter.AsHotkey());
     }
 
+    [Theory]
+    [InlineData(HotkeyModifiers.Ctrl | HotkeyModifiers.Shift, 0x4Du, "Ctrl+Shift+M")]
+    [InlineData(HotkeyModifiers.None, 0x1Bu, "Esc")]
+    [InlineData(HotkeyModifiers.None, 0x09u, "Tab")]
+    [InlineData(HotkeyModifiers.Alt, 0x73u, "Alt+F4")]
+    [InlineData(HotkeyModifiers.Win, 0x25u, "Win+Left")]
+    public void TheRecorderTurnsPressedKeysIntoAChord(HotkeyModifiers modifiers, uint key, string text)
+    {
+        Assert.True(KeyChord.TryCreate(modifiers, key, out var chord));
+        Assert.Equal(text, chord.ToString());
+    }
+
+    [Theory]
+    [InlineData(0xB3u)] // media play/pause: audio.media's job
+    [InlineData(0xE5u)] // IME process key
+    [InlineData(0x07u)] // unassigned
+    public void TheRecorderRefusesAKeyWithNoName(uint key) => Assert.False(KeyChord.TryCreate(HotkeyModifiers.None, key, out _));
+
     private static Model.ValueList<Problem> Validate(string keys, string hotkeys = "[]")
     {
         var load = ConfigYaml.Load("flows:\n  f:\n    hotkeys: " + hotkeys + "\n    nodes:\n      - { id: k, step: pc.keys, with: { keys: " + keys + " } }\n"

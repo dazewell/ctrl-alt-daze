@@ -447,7 +447,7 @@ public static class ProviderCatalog
         [
             new("keys", ParamKind.TextList, "Keys")
             {
-                Required = true, Ordered = true, Suggest = ParamSuggest.Static("pcKeys", Input.KeyChord.Examples),
+                Required = true, Ordered = true, RecordsKeys = true, Suggest = ParamSuggest.Static("pcKeys", Input.KeyChord.Examples),
                 Help = "Pressed in order, like Ctrl+Shift+M, F11 or Enter. Alt+Up or Alt+Down on a key's × moves it.",
             },
             new("program", ParamKind.Text, "Send to")

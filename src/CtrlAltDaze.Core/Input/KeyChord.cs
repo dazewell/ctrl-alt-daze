@@ -47,6 +47,14 @@ public sealed record KeyChord(HotkeyModifiers Modifiers, uint Key)
         return true;
     }
 
+    /// <summary>From keys pressed in the editor's recorder: false when the key has no name a flow can keep (a media key, an IME key).</summary>
+    public static bool TryCreate(HotkeyModifiers modifiers, uint key, [NotNullWhen(true)] out KeyChord? chord)
+    {
+        var candidate = new KeyChord(modifiers, key);
+        chord = TryParse(candidate.ToString(), out var parsed) && parsed == candidate ? parsed : null;
+        return chord is not null;
+    }
+
     /// <summary>The <see cref="Hotkey"/> this chord would fire if a flow has it as its shortcut; null when it can't be one.</summary>
     public Hotkey? AsHotkey() => Hotkey.TryCreate(Modifiers, Key, out var hotkey) ? hotkey : null;
 

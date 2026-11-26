@@ -663,4 +663,11 @@ public sealed partial class InspectorPane : UserControl
     }
 
     private void OnShortcutRecording(object? sender, bool recording) => _viewModel?.SetRecordingShortcut(recording);
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822", Justification = "XAML wires it on the instance")]
+    private void OnKeyRecorded(object? sender, string chord)
+    {
+        if ((sender as FrameworkElement)?.Tag is ParamFieldViewModel field)
+            field.AddToken(chord);
+    }
 }
