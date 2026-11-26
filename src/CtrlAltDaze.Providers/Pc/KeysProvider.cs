@@ -6,20 +6,27 @@ using CtrlAltDaze.Runtime.Providers;
 
 namespace CtrlAltDaze.Providers.Pc;
 
-/// <summary>A top-level window keys can go to. <paramref name="Program"/> is null when its process can't be read.</summary>
-public sealed record KeyTarget(nint Window, int ProcessId, string? Program, bool Elevated);
+/// <summary>
+/// A top-level window keys can go to. <paramref name="Program"/> is null when its process can't be read. <paramref name="IsFront"/>
+/// is false for the app just behind our own window or the taskbar (a run from the tray menu or the editor): it must be brought forward.
+/// <paramref name="Hung"/>: Windows marks it as not responding.
+/// </summary>
+public sealed record KeyTarget(nint Window, int ProcessId, string? Program, bool Elevated, bool IsFront = true, bool Hung = false);
 
 /// <summary>The PC's keyboard and windows, behind a seam so tests never type into the user's apps (D-157).</summary>
 public interface IKeyboard
 {
-    /// <summary>The window in front, or null when none takes keys (locked, the sign-in screen).</summary>
+    /// <summary>
+    /// The window in front, or null when none takes keys (locked, the sign-in screen). When Ctrl Alt Daze's own window or the
+    /// taskbar is in front, the first app window under it instead, with <see cref="KeyTarget.IsFront"/> false.
+    /// </summary>
     KeyTarget? Front();
 
     /// <summary>The main window of a running program with this name (no folder, no ".exe"); <paramref name="running"/> says whether any instance runs.</summary>
     KeyTarget? MainWindow(string program, out bool running);
 
     /// <summary>Restores <paramref name="target"/> if minimised and brings it to the front; true when it is in front afterwards.</summary>
-    bool BringToFront(KeyTarget target);
+    bool BringToFront(KeyTarget target, CancellationToken cancellationToken);
 
     /// <summary>Lets go of Win, Ctrl, Alt and Shift if they are still down (the shortcut that ran the flow), so they don't join the chords.</summary>
     void ReleaseModifiers();
@@ -55,7 +62,7 @@ public sealed class PcKeysProvider(IKeyboard keyboard, TimeProvider time) : ISte
         cancellationToken.ThrowIfCancellationRequested();
 
         var program = context.Text("program");
-        var target = string.IsNullOrWhiteSpace(program) ? InFront() : Bring(program);
+        var target = string.IsNullOrWhiteSpace(program) ? InFront(cancellationToken) : Bring(program, cancellationToken);
         if (target.Elevated)
             throw new StepFailedException($"{target.Program ?? "The app in front"} is running as administrator, so it ignores keys pressed by Ctrl Alt Daze.");
 
@@ -69,21 +76,35 @@ public sealed class PcKeysProvider(IKeyboard keyboard, TimeProvider time) : ISte
         }
     }
 
-    private KeyTarget InFront() =>
-        keyboard.Front() ?? throw new StepFailedException("No app is in front to take the keys (the PC may be locked).");
+    private KeyTarget InFront(CancellationToken cancellationToken)
+    {
+        var target = keyboard.Front() ?? throw new StepFailedException("No app is in front to take the keys (the PC may be locked).");
+        return target.IsFront ? target : Forward(target, target.Program ?? "The app behind", cancellationToken);
+    }
 
-    private KeyTarget Bring(string program)
+    private KeyTarget Bring(string program, CancellationToken cancellationToken)
     {
         var name = ProcessRunningProbe.ProgramName(Environment.ExpandEnvironmentVariables(program));
         var window = keyboard.MainWindow(name, out var running)
             ?? throw new StepFailedException(running ? $"{name} has no window to press keys in." : $"{name} isn't running.");
         if (window.Elevated)
             throw new StepFailedException($"{name} is running as administrator, so it ignores keys pressed by Ctrl Alt Daze.");
-        if (keyboard.Front() is { } front && (front.ProcessId == window.ProcessId || string.Equals(front.Program, name, StringComparison.OrdinalIgnoreCase)))
+        if (keyboard.Front() is { IsFront: true } front && (front.ProcessId == window.ProcessId || string.Equals(front.Program, name, StringComparison.OrdinalIgnoreCase)))
             return front;
-        if (!keyboard.BringToFront(window))
+        return Forward(window, name, cancellationToken);
+    }
+
+    /// <summary>Brings a window that isn't in front forward; a hung one isn't touched (restoring it would block, D-157).</summary>
+    private KeyTarget Forward(KeyTarget target, string name, CancellationToken cancellationToken)
+    {
+        if (target.Elevated)
+            throw new StepFailedException($"{name} is running as administrator, so it ignores keys pressed by Ctrl Alt Daze.");
+        if (target.Hung)
+            throw new StepFailedException($"{name} isn't responding, so no keys were pressed.");
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!keyboard.BringToFront(target, cancellationToken))
             throw new StepFailedException($"Windows didn't let {name} come to the front, so no keys were pressed.");
-        return window;
+        return target;
     }
 }
 
@@ -105,10 +126,45 @@ public sealed partial class WindowsKeyboard : IKeyboard
     /// <summary>Left and right Win, Ctrl, Alt and Shift.</summary>
     private static readonly ushort[] Modifiers = [0x5B, 0x5C, 0xA2, 0xA3, 0xA4, 0xA5, 0xA0, 0xA1];
 
+    /// <summary>The editor's process name: a flow run with its Run button finds the editor in front.</summary>
+    private const string EditorProcess = "CtrlAltDaze.Editor";
+
+    private const int GwHwndNext = 2, GwOwner = 4, GwlExStyle = -20, DwmCloaked = 14;
+    private const long ToolWindow = 0x80;
+
     public KeyTarget? Front()
     {
         var window = GetForegroundWindow();
-        return window == 0 ? null : Describe(window);
+        if (window == 0)
+            return null;
+        var front = Describe(window);
+        if (!IsOurs(front))
+            return front;
+        // The tray menu leaves the engine's hidden window in front, the Run button the editor: the keys are meant for the
+        // app the user was in, the first app window in z-order that isn't ours.
+        for (var next = GetTopWindow(0); next != 0; next = GetWindow(next, GwHwndNext))
+        {
+            if (IsAppWindow(next) && Describe(next) is var candidate && !IsOurs(candidate))
+                return candidate with { IsFront = false };
+        }
+        return null;
+    }
+
+    private static bool IsOurs(KeyTarget target) =>
+        target.ProcessId == Environment.ProcessId || string.Equals(target.Program, EditorProcess, StringComparison.OrdinalIgnoreCase)
+        || ClassName(target.Window) is "Shell_TrayWnd" or "Shell_SecondaryTrayWnd";
+
+    /// <summary>A window on the taskbar: visible, not minimised, not owned, not a tool window, not cloaked (another desktop, a suspended app).</summary>
+    private static bool IsAppWindow(nint window) =>
+        IsWindowVisible(window) && !IsIconic(window) && GetWindow(window, GwOwner) == 0
+        && (GetWindowLongPtrW(window, GwlExStyle) & ToolWindow) == 0
+        && !(DwmGetWindowAttribute(window, DwmCloaked, out var cloaked, sizeof(int)) == 0 && cloaked != 0);
+
+    private static string ClassName(nint window)
+    {
+        var buffer = new char[64];
+        var length = GetClassNameW(window, buffer, buffer.Length);
+        return length > 0 ? new string(buffer, 0, length) : "";
     }
 
     public KeyTarget? MainWindow(string program, out bool running)
@@ -140,12 +196,14 @@ public sealed partial class WindowsKeyboard : IKeyboard
         return found;
     }
 
-    public bool BringToFront(KeyTarget target)
+    public bool BringToFront(KeyTarget target, CancellationToken cancellationToken)
     {
+        // Async: ShowWindow on another thread's window waits for that thread, so a hung app would hold the step past its timeout.
         if (IsIconic(target.Window))
-            ShowWindow(target.Window, ShowRestore);
+            ShowWindowAsync(target.Window, ShowRestore);
         if (!SetForegroundWindow(target.Window) || !IsInFront(target))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             // Windows lets a background app take the front only right after a key press: an Alt press, masked so it
             // doesn't open the menu bar, is that press (the documented exception to the foreground lock).
             Send([Key(Alt, down: true), Key(MaskKey, down: true), Key(MaskKey, down: false), Key(Alt, down: false)]);
@@ -198,7 +256,7 @@ public sealed partial class WindowsKeyboard : IKeyboard
         {
             // exited meanwhile
         }
-        return new KeyTarget(window, (int)pid, name, IsElevated(pid));
+        return new KeyTarget(window, (int)pid, name, IsElevated(pid), Hung: IsHungAppWindow(window));
     }
 
     /// <summary>True when the process runs elevated, or is one whose token we may not even read (then keys can't reach it either).</summary>
@@ -273,7 +331,30 @@ public sealed partial class WindowsKeyboard : IKeyboard
 
     [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool ShowWindow(nint window, int command);
+    private static partial bool ShowWindowAsync(nint window, int command);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool IsHungAppWindow(nint window);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool IsWindowVisible(nint window);
+
+    [LibraryImport("user32.dll")]
+    private static partial nint GetTopWindow(nint parent);
+
+    [LibraryImport("user32.dll")]
+    private static partial nint GetWindow(nint window, int command);
+
+    [LibraryImport("user32.dll")]
+    private static partial nint GetWindowLongPtrW(nint window, int index);
+
+    [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    private static partial int GetClassNameW(nint window, [Out] char[] buffer, int length);
+
+    [LibraryImport("dwmapi.dll")]
+    private static partial int DwmGetWindowAttribute(nint window, int attribute, out int value, int size);
 
     [LibraryImport("user32.dll")]
     private static partial uint GetWindowThreadProcessId(nint window, out uint processId);

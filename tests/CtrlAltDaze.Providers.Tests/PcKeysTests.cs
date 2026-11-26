@@ -23,7 +23,7 @@ public class PcKeysTests
             return found.Window;
         }
 
-        public bool BringToFront(KeyTarget target)
+        public bool BringToFront(KeyTarget target, CancellationToken cancellationToken)
         {
             Log.Add("front " + target.Program);
             if (AllowFront)
@@ -99,6 +99,25 @@ public class PcKeysTests
         keyboard.Programs["taskmgr"] = (new KeyTarget(3, 300, "Taskmgr", true), true);
         e = await Assert.ThrowsAsync<StepFailedException>(() => Run(keyboard, "taskmgr", "F5"));
         Assert.Contains("administrator", e.Message, StringComparison.Ordinal);
+        Assert.Empty(keyboard.Log);
+    }
+
+    [Fact]
+    public async Task WithOurWindowInFrontTheAppBehindComesForwardFirst()
+    {
+        // A run from the tray menu: the engine's hidden window is in front, so Front gives the app under it.
+        var keyboard = new FakeKeyboard { InFront = new KeyTarget(5, 400, "notepad", false, IsFront: false) };
+        await Run(keyboard, null, "Alt+F4");
+        Assert.Equal(["front notepad", "release", "Alt+F4"], keyboard.Log);
+    }
+
+    [Fact]
+    public async Task AHungProgramIsNotTouched()
+    {
+        var keyboard = new FakeKeyboard();
+        keyboard.Programs["Teams"] = (new KeyTarget(7, 200, "Teams", false, Hung: true), true);
+        var e = await Assert.ThrowsAsync<StepFailedException>(() => Run(keyboard, "Teams", "Enter"));
+        Assert.Equal("Teams isn't responding, so no keys were pressed.", e.Message);
         Assert.Empty(keyboard.Log);
     }
 
