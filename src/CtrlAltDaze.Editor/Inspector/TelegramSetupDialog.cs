@@ -52,15 +52,15 @@ internal sealed class TelegramSetupDialog : IDisposable
 
     private ContentDialog Build(XamlRoot root)
     {
-        _check.Click += async (_, _) => await CheckKeyAsync();
+        _check.Click += async (_, _) => await Guarded(CheckKeyAsync);
         _key.PasswordChanged += (_, _) =>
         {
             if (_checkedKey is not null && _key.Password.Trim() != _checkedKey)
                 Reset("");
         };
-        _openBot.Click += async (_, _) => await OpenBotAsync(group: false);
-        _openGroup.Click += async (_, _) => await OpenBotAsync(group: true);
-        _send.Click += async (_, _) => await SendTestAsync();
+        _openBot.Click += async (_, _) => await Guarded(() => OpenBotAsync(group: false));
+        _openGroup.Click += async (_, _) => await Guarded(() => OpenBotAsync(group: true));
+        _send.Click += async (_, _) => await Guarded(SendTestAsync);
 
         _hello.Children.Add(Heading("2 · Say hello to it"));
         _hello.Children.Add(Note("Click Open my bot and press Start in Telegram. Bots can't write to you until you do. "
@@ -147,7 +147,10 @@ internal sealed class TelegramSetupDialog : IDisposable
         {
             while (!listen.IsCancellationRequested)
             {
-                if (await _api.FindStartAsync(key, code, offset, 20, listen.Token) is { } chat)
+                var found = await _api.FindStartAsync(key, code, offset, 20, listen.Token);
+                if (!ReferenceEquals(_listen, listen))
+                    return; // a newer click, a new key or Cancel took over while the answer was on its way
+                if (found is { } chat)
                 {
                     _chat = chat;
                     _chatStatus.Text = $"Found {chat.Title}.";
@@ -162,9 +165,12 @@ internal sealed class TelegramSetupDialog : IDisposable
         catch (OperationCanceledException)
         {
         }
-        catch (TelegramException e) when (!listen.IsCancellationRequested)
+        catch (TelegramException e)
         {
-            _chatStatus.Text = e.Message;
+            // Not filtered on the token: a failure that lands just after a newer click cancelled this listen must not escape
+            // the async void click handler (PR #278 review). Only the current listen may write the status.
+            if (ReferenceEquals(_listen, listen))
+                _chatStatus.Text = e.Message;
             return;
         }
         catch (ObjectDisposedException)
@@ -216,6 +222,21 @@ internal sealed class TelegramSetupDialog : IDisposable
         _listen?.Cancel();
         _listen?.Dispose();
         _listen = null;
+    }
+
+    /// <summary>
+    /// The click handlers are async void, and the editor has no unhandled-exception handler: a call still running when the guide
+    /// closes (its client is disposed then) ends quietly instead of taking the editor down.
+    /// </summary>
+    private static async Task Guarded(Func<Task> action)
+    {
+        try
+        {
+            await action();
+        }
+        catch (Exception e) when (e is TelegramException or ObjectDisposedException or OperationCanceledException or HttpRequestException)
+        {
+        }
     }
 
     private static TextBlock Heading(string text) =>
