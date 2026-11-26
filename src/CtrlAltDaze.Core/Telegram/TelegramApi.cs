@@ -173,7 +173,9 @@ public sealed partial class TelegramApi(HttpClient http)
             => "Telegram can't find this chat. Run Set up Telegram again, or press Start in the bot's chat.",
         400 when description.Contains("too long", StringComparison.OrdinalIgnoreCase) => $"The message is too long: Telegram takes at most {MaxText:N0} characters.",
         400 when description.Contains("empty", StringComparison.OrdinalIgnoreCase) => "The message is empty.",
-        409 => "This bot sends its messages to a web address (a webhook). Make a new bot with BotFather for this PC.",
+        409 when description.Contains("webhook", StringComparison.OrdinalIgnoreCase)
+            => "This bot sends its messages to a web address (a webhook). Make a new bot with BotFather for this PC.",
+        409 => "Another program is reading this bot's messages. Close it, or make a new bot with BotFather for this PC.",
         429 => "Telegram says too many messages were sent. Wait a minute and try again.",
         >= 500 => "Telegram isn't working right now. Try again later.",
         var code => $"Telegram refused the message ({code}).",

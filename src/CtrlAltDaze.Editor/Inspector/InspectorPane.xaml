@@ -92,6 +92,9 @@
                                           Text="{x:Bind Text, Mode=TwoWay}" PlaceholderText="{x:Bind Placeholder, Mode=OneWay}"
                                           ItemTemplate="{StaticResource SuggestionTemplate}" HorizontalAlignment="Stretch" Tag="{x:Bind}"
                                           DropDownOpened="OnSuggestionsOpened" AutomationProperties.Name="{x:Bind AutomationName, Mode=OneWay}" />
+                                <!-- telegram.send: the guide makes the bot, saves its key and finds the chat (D-158). -->
+                                <HyperlinkButton Content="Set up Telegram…" Visibility="{x:Bind SetsUpTelegram}" Click="OnSetUpTelegram" Tag="{x:Bind}"
+                                                 Padding="0" Margin="0,4,0,0" />
                                 <!-- android.start: search the device's apps by name; Enter on other text keeps it as the package (D-094). -->
                                 <AutoSuggestBox Visibility="{x:Bind IsAppPicker}" ItemsSource="{x:Bind AppRows}" Text="{x:Bind Text, Mode=OneWay}"
                                                 TextMemberPath="Package" PlaceholderText="Search apps or type a package name" Tag="{x:Bind}"

@@ -262,6 +262,17 @@ public sealed partial class InspectorPane : UserControl
             _viewModel?.OpenAndroidSequences(field);
     }
 
+    private async void OnSetUpTelegram(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is not ParamFieldViewModel bot || _viewModel is null)
+            return;
+        if (await TelegramSetupDialog.ShowAsync(XamlRoot) is not { } result)
+            return;
+        bot.Text = result.KeyName;
+        if (_viewModel.Fields.FirstOrDefault(f => f.Name == "chat") is { } chat)
+            chat.Text = result.Chat.Id;
+    }
+
     private void OnUseScreensOnNow(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.Tag is ParamFieldViewModel field && _viewModel is not null)
