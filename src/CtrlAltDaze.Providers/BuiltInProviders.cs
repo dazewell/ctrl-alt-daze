@@ -31,7 +31,7 @@ public static class BuiltInProviders
     /// queries as the steps; nothing is held between runs (idle = zero).
     /// </summary>
     public static IReadOnlyList<IFactProbe> Probes() =>
-        [new BluetoothConnectedProbe(new SystemBluetoothState(new CfgMgrPairedBluetooth())), .. Probes(new CoreAudioEndpoints(), new WindowsProcesses(), new WindowsServices(), new WindowsNetworkState(), new WindowsPcState(), TimeProvider.System)];
+        [new BluetoothConnectedProbe(new SystemBluetoothState(new CfgMgrPairedBluetooth())), new LockKeyProbe(new WindowsLockKeys()), .. Probes(new CoreAudioEndpoints(), new WindowsProcesses(), new WindowsServices(), new WindowsNetworkState(), new WindowsPcState(), TimeProvider.System)];
 
     internal static IReadOnlyList<IFactProbe> Probes(IAudioEndpoints audio, IProcesses processes, IServices services,
         INetworkState network, IPcState pc, TimeProvider time) =>
@@ -79,6 +79,7 @@ public static class BuiltInProviders
         var displays = new CcdDisplays();
         var android = new AndroidRemote(new AdbProcess(), time);
         var services = new WindowsServices();
+        var lockKeys = new WindowsLockKeys();
         var probes = Probes(audio, new WindowsProcesses(), services, new WindowsNetworkState(), new WindowsPcState(), time).ToDictionary(p => p.Fact);
         return
         [
@@ -100,6 +101,8 @@ public static class BuiltInProviders
             new AudioMuteProvider(audio),
             new AudioMediaProvider(new WindowsMediaCommands()),
             new PcKeysProvider(new WindowsKeyboard(), time),
+            new PcSetLockKeyProvider(lockKeys, time),
+            new FactCheckProvider("pc.lockKey", new LockKeyProbe(lockKeys), "on"),
             new BluetoothConnectProvider(bluetooth),
             new BluetoothDisconnectProvider(bluetooth),
             new BluetoothCheckProvider(new BluetoothConnectedProbe(new SystemBluetoothState(new CfgMgrPairedBluetooth()))),

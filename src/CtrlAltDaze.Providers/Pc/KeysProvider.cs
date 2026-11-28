@@ -237,6 +237,9 @@ public sealed partial class WindowsKeyboard : IKeyboard
         Send([.. inputs]);
     }
 
+    /// <summary>One key down and up, in one SendInput (Set lock key).</summary>
+    internal static void Tap(ushort key) => Send([Key(key, down: true), Key(key, down: false)]);
+
     private static bool IsInFront(KeyTarget target)
     {
         var front = GetForegroundWindow();

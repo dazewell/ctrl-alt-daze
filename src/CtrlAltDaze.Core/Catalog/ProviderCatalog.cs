@@ -44,7 +44,7 @@ public static class ProviderCatalog
         "audio.check", "bluetooth.check", "process.check", "service.check", "file.check", "file.space", "display.count",
         "android.check", "display.check", "flag.check",
         "network.wifi", "network.cable", "network.internet", "network.metered", "network.vpn", "network.reach",
-        "power.source", "power.battery", "pc.idle", "pc.locked", "time.check", "value.check",
+        "power.source", "power.battery", "pc.idle", "pc.locked", "pc.lockKey", "time.check", "value.check",
     };
 
     private static readonly ValueSpec Result = new("result", ValueKind.Text, "Result")
@@ -479,6 +479,17 @@ public static class ProviderCatalog
             },
         ])
         { Resources = ["keyboard"], Keywords = "hotkey shortcut keyboard keystroke send press key chord type app window" },
+        // D-159: reads the state first, presses only when it must; no app needs to be in front.
+        new("pc.setLockKey", "Set lock key", Pc, Short,
+        [
+            LockKeyParam(),
+            new("state", ParamKind.Choice, "Turn") { Choices = ["on", "off", "toggle"], Captions = ["On", "Off", "The other way"], Default = "on" },
+        ]) { Resources = ["keyboard"], Keywords = "num lock numlock caps lock capslock scroll lock scrolllock number pad numpad toggle keyboard led" },
+        new("pc.lockKey", "Check lock key", Pc, Short,
+        [
+            LockKeyParam(),
+            new("is", ParamKind.Choice, "Is") { Choices = ["on", "off"], Captions = ["On", "Off"], Default = "on", Help = WaitUntilHelp },
+        ]) { Keywords = "num lock numlock caps lock capslock scroll lock scrolllock number pad numpad keyboard" },
         new("power.source", "Check power", Power, Short,
         [
             new("is", ParamKind.Choice, "Is") { Choices = ["pluggedIn", "onBattery"], Captions = ["Plugged in", "On battery"], Default = "pluggedIn", Help = WaitUntilHelp },
@@ -783,10 +794,13 @@ public static class ProviderCatalog
     {
         "audio.check", "bluetooth.check", "display.check", "display.count", "process.check", "android.check", "service.check",
         "file.check", "file.space", "flag.check", "network.wifi", "network.cable", "network.internet", "network.metered",
-        "network.vpn", "network.reach", "power.source", "power.battery", "pc.idle", "pc.locked", "time.check", "value.check",
+        "network.vpn", "network.reach", "power.source", "power.battery", "pc.idle", "pc.locked", "pc.lockKey", "time.check", "value.check",
     };
 
     public static ProviderDescriptor? Find(string id) => All.FirstOrDefault(d => d.Id == id);
+
+    private static ParamSpec LockKeyParam() =>
+        new("key", ParamKind.Choice, "Key") { Choices = ["numLock", "capsLock", "scrollLock"], Captions = ["Num Lock", "Caps Lock", "Scroll Lock"], Default = "numLock" };
 
     private static ParamSpec Ref(string name, string title, LibraryKind kind, bool required = true, string? help = null) =>
         new(name, ParamKind.LibraryRef, title) { Library = kind, Required = required, Help = help };

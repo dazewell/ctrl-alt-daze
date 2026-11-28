@@ -932,6 +932,7 @@ A yes becomes a superseding D-entry in that row's PR. Reasons for and against: G
 - [ ] T28.2 Sound: Toggle on `audio.mute` (+ value `muted`), `audio.changeVolume`, check `audio.muted` (Sonnet, S). Reverses REVIEW §3 Audio "No".
 - [ ] T28.3 Clipboard: `clipboard.set`, `clipboard.get` (Sonnet, S). Reverses REVIEW §3 "clipboard: No".
 - [x] T28.4 Press keys: built as `pc.keys` (D-157; branch claude/system-hotkey-action-c15ded), "Type text" later (Opus, M). Reverses REVIEW §3 "keyboard macros: No". No recorder, mouse or hotstrings.
+- [x] T28.4b Set lock key: `pc.setLockKey` On / Off / The other way for Num, Caps and Scroll Lock, plus check `pc.lockKey` (D-159; branch claude/num-lock-explicit-control-53634b). User asked 2026-11-27.
 - [ ] T28.5 Windows: `window.move`, `window.state`, `window.focus` (Opus, L; design first). Reverses REVIEW §3 "window moving/focus: No".
 - [ ] T28.6 Ask for text or a number (Opus, M-L). Reverses "text later" in D-107 / D-131: the first window of ours that takes keyboard focus (after a click).
 - [ ] T28.7 Theme: `pc.theme` Dark / Light (Sonnet, S). Reverses REVIEW §3 "Windows toggles: examples instead".
