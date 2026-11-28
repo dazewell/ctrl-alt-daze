@@ -31,6 +31,7 @@ public class StateCheckValidationTests
     [InlineData("power.battery", "percent: 30, is: below")]
     [InlineData("pc.idle", "for: 10m")]
     [InlineData("pc.locked", "is: unlocked")]
+    [InlineData("pc.lockKey", "key: capsLock, is: off")]
     [InlineData("display.count", "count: 2")]
     [InlineData("file.space", "drive: 'D:', gb: 50")]
     [InlineData("time.check", "days: weekdays, from: '22:00', to: '06:00'")]
